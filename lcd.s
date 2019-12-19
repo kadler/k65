@@ -42,18 +42,6 @@ reset:
   lda #$0f
   jsr sendcmd
 
-  ; set end of line 1
-  lda #16
-  sta $10
-
-  ; set end of line 2
-  lda #32
-  sta $20
-
-  ; set end of displayable ASCII
-  lda #$7f
-  sta $30
-
   ; X is our character register
   lda #65 ; start at 'A'
   tax
@@ -69,14 +57,14 @@ loop:
   ; are *not* consecutive, so if we get to 16
   ; we move to the next line and if we get to
   ; 32, we move to the first line
-  cpy $10
+  cpy #16
   beq move_line_two
 
-  cpy $20
+  cpy #32
   beq move_line_one
 
 line_adjusted:
-  cpx $30
+  cpx #$7f
   beq reset_character
 
 display_character:
