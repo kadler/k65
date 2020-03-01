@@ -49,7 +49,6 @@ reset:
 
 loop:
   lda hello, x
-  cmp #$00
   beq done
   
   jsr senddata
