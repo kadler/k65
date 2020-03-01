@@ -24,3 +24,4 @@ loop:
   .word $0000
 
 
+; vim: syntax=asm6502
