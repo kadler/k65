@@ -1,0 +1,20 @@
+name: CI
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Setup vasm
+      run: |
+        wget http://server.owl.de/~frank/tags/vasm1_8g.tar.gz
+        tar -xf vasm1_8g.tar.gz
+        cd vasm
+        make -j CPU=6502 SYNTAX=oldstyle
+        sudo mv vasm6502_oldstyle /usr/bin
+    - uses: actions/checkout@v2
+    - name: Build
+      run: make all
+
