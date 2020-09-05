@@ -1,6 +1,6 @@
 SOURCES= \
-    blink.s \
-    blink2.s \
+    blink_all.s \
+    blink_and_count.s \
     rotate.s \
     lcd.s \
     hello_world.s
