@@ -17,3 +17,5 @@ include $(SOURCES:.s=.bin.d)
 %.bin: %.s
 	vasm6502_oldstyle -Fbin -dotdir -o $@ $<
 
+%.bin.burn: %.bin
+	minipro -p AT28C256 -w $<
