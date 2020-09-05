@@ -4,7 +4,8 @@ SOURCES= \
     blink_and_count.s \
     rotate.s \
     lcd.s \
-    hello_world.s
+    hello_world.s \
+    bintodec.s
 
 ROMS=$(SOURCES:.s=.bin)
 
