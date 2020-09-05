@@ -22,25 +22,25 @@ reset:
   ; ensure we're in 8-bit mode
   ; https://en.wikipedia.org/wiki/Hitachi_HD44780_LCD_controller#Mode_Selection
   lda #$30
-  jsr sendcmd
-  jsr sendcmd
-  jsr sendcmd
+  jsr lcd_cmd
+  jsr lcd_cmd
+  jsr lcd_cmd
 
   ; set up 2-line mode
   lda #$3C
-  jsr sendcmd
+  jsr lcd_cmd
 
   ; clear the display
   lda #$01
-  jsr sendcmd
+  jsr lcd_cmd
 
   ; move the cursor home
   lda #$02
-  jsr sendcmd
+  jsr lcd_cmd
 
   ; set display and cursor on, and blink cursor
   lda #$0f
-  jsr sendcmd
+  jsr lcd_cmd
 
   ; X is our character register
   lda #65 ; start at 'A'
@@ -70,7 +70,7 @@ line_adjusted:
 display_character:
   ; display the character
   txa
-  jsr senddata
+  jsr lcd_data
   
   inx
   iny
@@ -87,7 +87,7 @@ move_line_two:
   ; first line, so move the cursor to the start
   ; of the second line
   lda #$C0
-  jsr sendcmd
+  jsr lcd_cmd
 
   ; continue display processing
   jmp line_adjusted
@@ -96,7 +96,7 @@ move_line_one:
   ; the cursor is after the last column of the
   ; second line, so move cursor home
   lda #$80
-  jsr sendcmd
+  jsr lcd_cmd
 
   ; reset our cursor position
   lda #$00
@@ -107,21 +107,8 @@ move_line_one:
 
   jmp reset
 
-senddata:
-  sta PORTB
-  lda #$A0  ; CLK=1, R/W=0 (W), RS=1 (DATA)
-  sta PORTA
-  lda #$00  ; CLK=0, R/W=0 (W), RS=0 (CMD)
-  sta PORTA
-  rts
-
-sendcmd:
-  sta PORTB
-  lda #$80  ; CLK=1, R/W=0(W), RS=0 (CMD)
-  sta PORTA
-  lda #$00  ; CLK=0, R/W=0(W), RS=0 (CMD)
-  sta PORTA
-  rts
+  ; include LCD routines
+  .include lcd.inc.s
 
   .org $fffa
   .word $0000

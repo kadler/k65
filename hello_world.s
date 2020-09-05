@@ -22,25 +22,25 @@ reset:
   ; ensure we're in 8-bit mode
   ; https://en.wikipedia.org/wiki/Hitachi_HD44780_LCD_controller#Mode_Selection
   lda #$30
-  jsr sendcmd
-  jsr sendcmd
-  jsr sendcmd
+  jsr lcd_cmd
+  jsr lcd_cmd
+  jsr lcd_cmd
 
   ; set up 2-line mode
   lda #$3C
-  jsr sendcmd
+  jsr lcd_cmd
 
   ; clear the display
   lda #$01
-  jsr sendcmd
+  jsr lcd_cmd
 
   ; move the cursor home
   lda #$02
-  jsr sendcmd
+  jsr lcd_cmd
 
   ; set display and cursor on, and blink cursor
   lda #$0f
-  jsr sendcmd
+  jsr lcd_cmd
 
   ; X is our string index
   lda #0
@@ -51,7 +51,7 @@ loop:
   lda hello, x
   beq done
   
-  jsr senddata
+  jsr lcd_data
   
   inx
   jmp loop
@@ -59,21 +59,7 @@ loop:
 done:
   jmp done
 
-senddata:
-  sta PORTB
-  lda #$A0  ; CLK=1, R/W=0 (W), RS=1 (DATA)
-  sta PORTA
-  lda #$00  ; CLK=0, R/W=0 (W), RS=0 (CMD)
-  sta PORTA
-  rts
-
-sendcmd:
-  sta PORTB
-  lda #$80  ; CLK=1, R/W=0(W), RS=0 (CMD)
-  sta PORTA
-  lda #$00  ; CLK=0, R/W=0(W), RS=0 (CMD)
-  sta PORTA
-  rts
+  .include lcd.inc.s
 
 hello
   .text "Hello, World!"
