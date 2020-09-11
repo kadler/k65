@@ -15,10 +15,10 @@ all: $(ROMS)
 include $(SOURCES:.s=.bin.d)
 
 %.bin.d: %.s
-	vasm6502_oldstyle -quiet -c02 -Fbin -dotdir -depend=make -o $*.bin $< > $@
+	vasm6502_oldstyle -quiet -c02 -Fbin -dotdir -opt-branch -depend=make -o $*.bin $< > $@
 
 %.bin: %.s
-	vasm6502_oldstyle -c02 -Fbin -dotdir -o $@ $<
+	vasm6502_oldstyle -c02 -Fbin -dotdir -opt-branch -o $@ $<
 
 %.bin.burn: %.bin
 	minipro -p AT28C256 -w $<
