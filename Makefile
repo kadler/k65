@@ -7,7 +7,8 @@ SOURCES= \
     hello_world.s \
     bintodec.s \
     interrupt_game.s \
-    echo.s
+    echo.s \
+    sdio_hello.s
 
 ROMS=$(SOURCES:.s=.bin)
 PRGS=$(SOURCES:.s=.prg)
