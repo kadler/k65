@@ -1,6 +1,6 @@
 ; basic program for Ben Eater's 6502 computer kit
 ; requires 6522 memory mapped to $6000
-; PORTB flips between $55 and $AA
+; PB1 flips between $55 and $AA
 
   .org $8000
 

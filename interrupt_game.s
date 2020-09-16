@@ -4,15 +4,12 @@
 ;
 ; SPDX-License-Identifier: GPL-3.0-or-later
 
-PORTB    = $6000
-PORTA    = $6001
-PORTBDIR = $6002
-PORTADIR = $6003
-
 value   = $0200
 mod10   = $0202
 message = $0204
 counter = $020a
+
+  .include registers.inc.s
 
   .org $8000
 
@@ -20,8 +17,8 @@ reset:
   ; set all pins in port B as outputs
   ; set all pins in port A as outputs
   lda #$ff
-  sta PORTBDIR
-  sta PORTADIR
+  sta DDRB1
+  sta DDRA1
 
   ; ensure we're in 8-bit mode
   ; https://en.wikipedia.org/wiki/Hitachi_HD44780_LCD_controller#Mode_Selection

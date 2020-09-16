@@ -1,29 +1,26 @@
 ; basic program for Ben Eater's 6502 computer kit
 ; requires 6522 memory mapped to $6000
-; Blink pin 1 on PORTA at ~1Hz
+; Blink pin 1 on PA1 at ~1Hz
 
-PORTB    = $6000
-PORTA    = $6001
-PORTBDIR = $6002
-PORTADIR = $6003
+  .include registers.inc.s
 
   .org $8000
 
 reset:
   ; set all pins in port A as outputs
   lda #$ff
-  sta PORTADIR
+  sta DDRA1
 
 loop:
   lda #1
-  sta PORTA
+  sta PA1
 
   lda #250
   jsr delayms
   jsr delayms
 
   lda #0
-  sta PORTA
+  sta PA1
 
   lda #250
   jsr delayms

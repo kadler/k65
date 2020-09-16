@@ -1,7 +1,7 @@
 ; simple program for Ben Eater's 6502 computer kit
 ; requires 6522 memory mapped to $6000
-; PORTB rotates right from address $00
-; PORTA rotates left  from address $01
+; PB1 rotates right from address $00
+; PA1 rotates left  from address $01
 
   .org $8000
 

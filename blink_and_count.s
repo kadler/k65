@@ -1,7 +1,7 @@
 ; basic program for Ben Eater's 6502 computer kit
 ; requires 6522 memory mapped to $6000
-; PORTB flips between $55 and $AA
-; PORTA counts up from 0 using X register
+; PB1 flips between $55 and $AA
+; PA1 counts up from 0 using X register
 
   .org $8000
 
