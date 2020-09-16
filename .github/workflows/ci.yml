@@ -9,8 +9,8 @@ jobs:
     steps:
     - name: Setup vasm
       run: |
-        wget http://server.owl.de/~frank/tags/vasm1_8g.tar.gz
-        tar -xf vasm1_8g.tar.gz
+        wget http://server.owl.de/~frank/tags/vasm1_8h.tar.gz
+        tar -xf vasm1_8h.tar.gz
         cd vasm
         make -j CPU=6502 SYNTAX=oldstyle
         sudo mv vasm6502_oldstyle /usr/bin
