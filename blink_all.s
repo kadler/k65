@@ -2,7 +2,11 @@
 ; requires 6522 memory mapped to $6000
 ; PB1 flips between $55 and $AA
 
-  .org $8000
+  .include header.inc.s
+
+nmi:
+irq:
+  rti
 
 reset:
   ; set all pins in port B as outputs
@@ -17,11 +21,5 @@ loop:
   sta $6000
 
   jmp loop
-
-  .org $fffa
-  .word $0000
-  .word reset ; reset vector
-  .word $0000
-
 
 ; vim: syntax=asm6502

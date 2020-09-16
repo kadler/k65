@@ -2,9 +2,11 @@
 ; requires 6522 memory mapped to $6000
 ; Blink pin 1 on PA1 at ~1Hz
 
-  .include registers.inc.s
+  .include header.inc.s
 
-  .org $8000
+nmi:
+irq:
+  rti
 
 reset:
   ; set all pins in port A as outputs
@@ -30,10 +32,6 @@ loop:
 
   .include delay.inc.s
 
-  .org $fffa
-  .word $0000
-  .word reset ; reset vector
-  .word $0000
 
 
 ; vim: syntax=asm6502

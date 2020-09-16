@@ -9,9 +9,7 @@ mod10   = $0202
 message = $0204
 counter = $020a
 
-  .include registers.inc.s
-
-  .org $8000
+  .include header.inc.s
 
 reset:
   ; set all pins in port B as outputs
@@ -136,11 +134,5 @@ irq:
 
 exit_irq:
   rti
-
-  .org $fffa
-  .word nmi
-  .word reset ; reset vector
-  .word irq
-
 
 ; vim: syntax=asm6502

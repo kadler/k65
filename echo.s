@@ -6,9 +6,11 @@
 ;
 ; SPDX-License-Identifier: GPL-3.0-or-later
 
-  .include registers.inc.s
+  .include header.inc.s
 
-  .org $8000
+nmi:
+irq:
+  rti
 
 reset:
   ; set all pins in port B as outputs
@@ -100,10 +102,5 @@ wait_rxd_full:
 
 hello
   .asciiz "Hello, Serial Port!"
-
-  .org $fffa
-  .word $0000
-  .word reset ; reset vector
-  .word $0000
 
 ; vim: syntax=asm6502

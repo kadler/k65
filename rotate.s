@@ -3,7 +3,11 @@
 ; PB1 rotates right from address $00
 ; PA1 rotates left  from address $01
 
-  .org $8000
+  .include header.inc.s
+
+nmi:
+irq:
+  rti
 
 reset:
   ; set all pins in port B as outputs
@@ -30,11 +34,5 @@ loop:
   sta $01
 
   jmp loop
-
-  .org $fffa
-  .word $0000
-  .word reset ; reset vector
-  .word $0000
-
 
 ; vim: syntax=asm6502

@@ -10,16 +10,24 @@ SOURCES= \
     echo.s
 
 ROMS=$(SOURCES:.s=.bin)
+PRGS=$(SOURCES:.s=.prg)
 
-all: $(ROMS)
+all: $(ROMS) $(PRGS)
 
 include $(SOURCES:.s=.bin.d)
+include $(SOURCES:.s=.prg.d)
 
 %.bin.d: %.s
-	vasm6502_oldstyle -quiet -c02 -Fbin -dotdir -opt-branch -depend=make -o $*.bin $< > $@
+	vasm6502_oldstyle -quiet -c02 -Fbin -dotdir -opt-branch -DROM -depend=make -o $*.bin $< > $@
+
+%.prg.d: %.s
+	vasm6502_oldstyle -quiet -c02 -Fbin -dotdir -opt-branch -depend=make -o $*.prg $< > $@
 
 %.bin: %.s
-	vasm6502_oldstyle -c02 -Fbin -dotdir -opt-branch -o $@ $<
+	vasm6502_oldstyle -c02 -Fbin -dotdir -opt-branch -DROM -o $@ $<
+
+%.prg: %.s
+	vasm6502_oldstyle -c02 -Fbin -dotdir -opt-branch -cbm-prg -o $@ $<
 
 %.bin.burn: %.bin
 	minipro -p AT28C256 -w $<
