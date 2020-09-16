@@ -1,3 +1,23 @@
+puts:
+  pha
+  phy
+
+  clc
+  ldy #0
+.loop:
+  lda (R1),y
+  beq .done
+
+  jsr lcd_data
+  iny
+  bne .loop
+
+.done:
+  ply
+  pla
+  rts
+
+
 lcd_wait:
   pha
 
@@ -5,7 +25,7 @@ lcd_wait:
   lda #0
   sta DDRB1
 
-check_lcd_status:
+.check_status:
   lda #$C0  ; CLK=1, R/W=1 (R), RS=0 (CMD)
   sta PA1
 
@@ -19,7 +39,7 @@ check_lcd_status:
   ; Since the busy flag is in the top bit, we can cheat
   ; and check for a "negative" value
   pla
-  bmi check_lcd_status
+  bmi .check_status
 
   ; set PB1 back to output
   lda #$ff
@@ -29,6 +49,7 @@ check_lcd_status:
   rts
 
 lcd_data:
+putc:
   pha
   jsr lcd_wait
 
@@ -42,8 +63,8 @@ lcd_data:
   rts
 
 lcd_cmd:
-  jsr lcd_wait
   pha
+  jsr lcd_wait
 
   sta PB1
   lda #$80  ; CLK=1, R/W=0 (W), RS=0 (CMD)
