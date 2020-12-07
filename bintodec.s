@@ -1,6 +1,5 @@
 ; Converts a 16-bit number to a string and prints it to the LCD
-; requires 6522 memory mapped to $6000 and LCD
-; attached to port A and B
+; requires LCD attached to 6522 VIA 1.
 ;
 ; SPDX-License-Identifier: GPL-3.0-or-later
 
