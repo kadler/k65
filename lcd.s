@@ -68,6 +68,9 @@ display_character:
   ; display the character
   txa
   jsr lcd_data
+
+  lda #125
+  jsr delayms
   
   inx
   iny
@@ -103,6 +106,9 @@ move_line_one:
   jmp line_adjusted
 
   jmp reset
+
+  ; include delay routines
+  .include delay.inc.s
 
   ; include LCD routines
   .include lcd.inc.s
