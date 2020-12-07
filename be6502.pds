@@ -2,13 +2,27 @@ CHIP ABC_GAL PALCE22V10 ; ATF22V10C-10PU, actually
 
 ;----------------- PIN Declarations -----------------------
 
+; TODO: These pins should be adjusted because I wasn't sure if
+; the CLK / PD lines would be configured right so I skipped them
+; and I wasn't planning on using this many address lines so they
+; ended up getting used.
+PIN 1  A6   ; TODO: Move this to pin 10 and adjust other pins
 PIN 2  CLK
 PIN 3  A15
+PIN 4  A7   ; TODO: Move this to pin 11 and adjust other pins
 PIN 5  A14
 PIN 6  A13
+PIN 7  A12
+PIN 8  A11
+PIN 9  A10
+PIN 10 A9
+PIN 11 A8
 
-PIN 18 viaCS
+PIN 18 via1CS
+PIN 19 IO
+PIN 20 via2CS
 PIN 21 romCS
+PIN 22 aciaCS
 PIN 23 ramCS
 
 
@@ -16,6 +30,17 @@ PIN 23 ramCS
 
 EQUATIONS
 
-/romCS = A15                        ; 1xxxxxxxxxxxxxxx 0x8000 - 0xffff
-/viaCS = /A15 * A14 * A13           ; 011xxxxxxxxxxxxx 0x6000 - 0x7fff
-/ramCS = /A15 * /A14 * CLK          ; 00xxxxxxxxxxxxxx 0x0000 - 0x3fff
+; ROM is the top 32k of address space
+/romCS = A15                        ; 0x8000 - 0xffff
+
+; I/O lives in the 256 bytes below the ROM
+IO = /A15 * A14 * A13 * A12 *       ; 0x7f00 - 0x7fff
+      A11 * A10 * A9 * A8
+
+;xxxxxx = IO * /A7 * /A6            ; 0x7fc0 - 0x7fff
+/aciaCS = IO *  A7 * /A6            ; 0x7f80 - 0x7fbf
+/via2CS = IO * /A7 *  A6            ; 0x7f40 - 0x7f7f
+/via1CS = IO * /A7 * /A6            ; 0x7f00 - 0x7f3f
+
+; RAM lives in the bottom 32k, minus the 256 byte I/O hole
+/ramCS = CLK * /A15 * /IO           ; 0x0000 - 0x7eff
