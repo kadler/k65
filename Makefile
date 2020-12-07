@@ -6,7 +6,8 @@ SOURCES= \
     lcd.s \
     hello_world.s \
     bintodec.s \
-    interrupt_game.s
+    interrupt_game.s \
+    echo.s
 
 ROMS=$(SOURCES:.s=.bin)
 
