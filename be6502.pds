@@ -1,0 +1,21 @@
+CHIP ABC_GAL PALCE22V10 ; ATF22V10C-10PU, actually
+
+;----------------- PIN Declarations -----------------------
+
+PIN 2  CLK
+PIN 3  A15
+PIN 5  A14
+PIN 6  A13
+
+PIN 18 viaCS
+PIN 21 romCS
+PIN 23 ramCS
+
+
+;-------------- Boolean Equation Segment ------------------
+
+EQUATIONS
+
+/romCS = A15                        ; 1xxxxxxxxxxxxxxx 0x8000 - 0xffff
+/viaCS = /A15 * A14 * A13           ; 011xxxxxxxxxxxxx 0x6000 - 0x7fff
+/ramCS = /A15 * /A14 * CLK          ; 00xxxxxxxxxxxxxx 0x0000 - 0x3fff
