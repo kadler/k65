@@ -5,6 +5,44 @@
   .ifndef LCD_INC
 LCD_INC = 1
 
+; LCD commands
+LCD_CLEAR       = %00000001
+LCD_HOME        = %00000010
+LCD_ENTRY_MODE  = %00000100
+LCD_DISP_CTL    = %00001000
+LCD_CURS_SHIFT  = %00010000
+LCD_FUNC_SET    = %00100000
+LCD_CGRAM_ADDR  = %01000000
+LCD_DDRAM_ADDR  = %10000000
+
+
+; LCD_ENTRY_MODE options
+LCD_ENTRY_INC   = %00000010
+LCD_ENTRY_DEC   = %00000000
+
+; LCD_DISP_CTL options
+LCD_DISPLAY_ON  = %00000100
+LCD_DISPLAY_OFF = %00000000
+LCD_CURSOR_ON   = %00000100
+LCD_CURSOR_OFF  = %00000000
+LCD_BLINK_ON    = %00000001
+LCD_BLICK_OFF   = %00000000
+
+; LCD_FUNC_SET options
+LCD_8BIT_MODE   = %00010000
+LCD_4BIT_MODE   = %00000000
+LCD_TWO_LINE    = %00001000
+LCD_ONE_LINE    = %00000000
+LCD_5X10_FONT   = %00000100
+LCD_5x8_FONT    = %00000000
+
+; LCD_CURS_SHIFT options
+LCD_SHIFT_DISP  = %00001000
+LCD_MOVE_CURSOR = %00000000
+LCD_DIR_RIGHT   = %00000100
+LCD_DIR_LEFT    = %00000000
+
+
 HEX
   .text "0123456789ABCDEF"
 
@@ -138,6 +176,27 @@ lcd_cmd:
   lda #$00  ; CLK=0, R/W=0 (W), RS=0 (CMD)
   sta PA1
 
+  pla
+  rts
+
+lcd_clear:
+  pha
+  lda #LCD_CLEAR
+  jsr lcd_cmd
+  pla
+  rts
+
+lcd_home:
+  pha
+  lda #LCD_HOME
+  jsr lcd_cmd
+  pla
+  rts
+
+lcd_line_two:
+  pha
+  lda #(LCD_DDRAM_ADDR | $40)
+  jsr lcd_cmd
   pla
   rts
 

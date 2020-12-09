@@ -2,3 +2,4 @@
 *.d
 *.prg
 *.lst
+syscalls.inc.s
