@@ -13,42 +13,13 @@ irq:
   rti
 
 reset:
-  ; set all pins in port B as outputs
-  ; set all pins in port A as outputs
-  lda #$ff
-  sta DDRB1
-  sta DDRA1
+  jsr lcd_init
 
   lda #%00010000 ; 1 stop bit, 8 data bits, external clock, 16x external clock (115200)
   sta ACIACTL
 
   lda #%00001011
   sta ACIACMD
-
-
-
-  ; ensure we're in 8-bit mode
-  ; https://en.wikipedia.org/wiki/Hitachi_HD44780_LCD_controller#Mode_Selection
-  lda #$30
-  jsr lcd_cmd
-  jsr lcd_cmd
-  jsr lcd_cmd
-
-  ; set up 2-line mode
-  lda #$3C
-  jsr lcd_cmd
-
-  ; clear the display
-  lda #$01
-  jsr lcd_cmd
-
-  ; move the cursor home
-  lda #$02
-  jsr lcd_cmd
-
-  ; set display and cursor on, and blink cursor
-  lda #$0f
-  jsr lcd_cmd
 
   lda #<hello
   sta R1

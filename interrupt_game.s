@@ -12,30 +12,7 @@ counter = $020a
   .include header.inc.s
 
 reset:
-  ; set all pins in port B as outputs
-  ; set all pins in port A as outputs
-  lda #$ff
-  sta DDRB1
-  sta DDRA1
-
-  ; ensure we're in 8-bit mode
-  ; https://en.wikipedia.org/wiki/Hitachi_HD44780_LCD_controller#Mode_Selection
-  lda #$30
-  jsr lcd_cmd
-  jsr lcd_cmd
-  jsr lcd_cmd
-
-  ; set up 2-line mode
-  lda #$3C
-  jsr lcd_cmd
-
-  ; clear the display
-  lda #$01
-  jsr lcd_cmd
-
-  ; set display and cursor on
-  lda #$0e
-  jsr lcd_cmd
+  jsr lcd_init
 
   lda #0
   sta counter
