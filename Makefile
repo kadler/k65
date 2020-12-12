@@ -8,15 +8,23 @@ SOURCES= \
     bintodec.s \
     interrupt_game.s \
     echo.s \
-    sdio_hello.s
+    sdio_hello.s \
+    sdio_prg.s
 
-ROMS=$(SOURCES:.s=.bin)
-PRGS=$(SOURCES:.s=.prg)
+PRG_SOURCES= \
+    hello_world_load.s
+
+ROM_SOURCES= \
+
+ROMS=$(SOURCES:.s=.bin) $(ROM_SOURCES:.s=.bin)
+PRGS=$(SOURCES:.s=.prg) $(PRG_SOURCES:.s=.prg)
 
 all: $(ROMS) $(PRGS)
 
 include $(SOURCES:.s=.bin.d)
 include $(SOURCES:.s=.prg.d)
+include $(ROM_SOURCES:.s=.bin.d)
+include $(PRG_SOURCES:.s=.prg.d)
 
 %.bin.d: %.s
 	vasm6502_oldstyle -quiet -c02 -Fbin -dotdir -opt-branch -DROM -depend=make -o $*.bin $< > $@
