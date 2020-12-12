@@ -1,3 +1,7 @@
+; LCD functions for Ben Eater's 6502 computer kit
+
+; SPDX-License-Identifier: GPL-3.0-or-later
+
 puts:
   pha
   phy
