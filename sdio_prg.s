@@ -5,6 +5,8 @@
 ;
 ; SPDX-License-Identifier: GPL-3.0-or-later
 
+VERBOSE = 1
+
   .include header.inc.s
 
 syscall_puts:

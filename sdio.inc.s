@@ -31,6 +31,12 @@ puts2:
   jsr delayms
   rts
 
+  .macro DEBUG
+  .ifdef VERBOSE
+  PUTS \1
+  .endif
+  .endm
+
   .macro SET_CMD_FIELDS
   lda #($40 | \1)
   sta SD_CMD
@@ -106,7 +112,7 @@ sd_init:
 ; The spec says *at least* 74 clocks must be sent, but Micropython and
 ; CircuitPython both use 80 clocks so we follow suit.
 init_micro:
-  PUTS SD_INIT
+  DEBUG SD_INIT
 
   ; Make sure we're not selecting the SD card
   lda #SD_CSB
@@ -133,7 +139,7 @@ init_micro:
 
   ldx #5
 send_cmd0:
-  PUTS SEND_CMD0
+  DEBUG SEND_CMD0
   jsr sd_cmd
   cmp #1
   beq cmd0_done
@@ -141,20 +147,20 @@ send_cmd0:
   dex
   bne send_cmd0
 
-  PUTS NO_SDCARD
+  DEBUG NO_SDCARD
   ; TODO: Carve out a memory location to serve as a status byte
   sec
   rts
 
 cmd0_done:
-  PUTS FOUND_SDCARD
+  DEBUG FOUND_SDCARD
 
   ; Once in idle state, we must send CMD8 to do V2 init
   ; TODO: We don't plan on doing V2 init, so do we even need
   ; to send this?
   SET_CMD_FIELDS_CRC 8, $01aa, SD_FLG_RSP, $87
 
-  PUTS SEND_CMD8
+  DEBUG SEND_CMD8
   jsr sd_cmd
 
   ;cmp #$01
@@ -166,20 +172,20 @@ cmd0_done:
 ;sd_v2_init:
 ;  ; NOTE: We are not going to support high-capacity mode
 ;  ; so we're going to init as a v1 card
-;  PUTS SD_V2_INIT
+;  DEBUG SD_V2_INIT
 
 ;  lda SD_ARG+3
 ;  cmp #$aa
 ;  beq sd_init
 
-;  PUTS SD_CHECK_PATTERN_ERROR
+;  DEBUG SD_CHECK_PATTERN_ERROR
   
 ;  jsr hexdump
 ;check_pattern_error:
 ;  jmp check_pattern_error
 
 ;sd_v1_init:
-;  PUTS SD_V1_INIT
+;  DEBUG SD_V1_INIT
 
 ;sd_init:
 
@@ -201,12 +207,12 @@ sd_init_loop:
   dex
   bne sd_init_loop
 
-  PUTS SD_INIT_V1_FAIL
+  DEBUG SD_INIT_V1_FAIL
   sec
   rts
 
 sd_init_done:
-  PUTS SD_INIT_V1_SUCCESS
+  DEBUG SD_INIT_V1_SUCCESS
 
   ; CMD58: Read the Operations Condition Register (OCR)
   ; pre-set the command and flag, we'll need to re-adjust the
@@ -225,7 +231,7 @@ send_cmd58:
   sta SD_ARG+2
   sta SD_ARG+3
 
-  PUTS SEND_CMD58
+  DEBUG SEND_CMD58
   jsr sd_cmd
 
   lda SD_ARG
@@ -233,10 +239,9 @@ send_cmd58:
   ; top bit is 0 when SD is busy
   bpl send_cmd58
 
-  PUTS SD_READY
+  DEBUG SD_READY
   clc
   rts
-
 
 
 SD_MISO = $01
@@ -254,7 +259,7 @@ SD_CSB  = $01
 sd_wait_ready:
   pha
   phx
-  ;PUTS SD_WAIT_READY
+  ;DEBUG SD_WAIT_READY
 
   ldx #200
 sd_wait_ready_loop:
@@ -266,7 +271,7 @@ sd_wait_ready_loop:
   dex
   bne sd_wait_ready_loop
 
-  PUTS SD_FAIL_WAIT
+  DEBUG SD_FAIL_WAIT
 
 sd_fail_wait:
   jmp sd_fail_wait
@@ -284,7 +289,7 @@ sd_read_byte:
   phx
   phy
 
-  ;PUTS SD_READ_BYTE
+  ;DEBUG SD_READ_BYTE
 
   ldy #SD_MOSI
   sty PA2
@@ -319,7 +324,7 @@ sd_write_byte:
   phx
   phy
 
-  ;PUTS SD_WRITE_BYTE
+  ;DEBUG SD_WRITE_BYTE
 
   ldx #8
 sd_bit_loop:
@@ -356,7 +361,7 @@ sd_cmd:
   ; TODO: only if needed
   jsr sd_wait_ready
 
-  ;PUTS SD_CMDS
+  ;DEBUG SD_CMDS
 
   lda SD_CMD
   jsr sd_write_byte
@@ -376,7 +381,7 @@ sd_cmd:
   lda SD_CRC
   jsr sd_write_byte
 
-  ;PUTS READ_STATUS
+  ;DEBUG READ_STATUS
 
   ldx #200
 sd_cmd_wait_status:
@@ -388,7 +393,7 @@ sd_cmd_wait_status:
   dex
   bne sd_cmd_wait_status
 
-  PUTS READ_STATUS_FAIL
+  DEBUG READ_STATUS_FAIL
 ;read_status_fail:
   ;jmp read_status_fail
   pha
@@ -396,7 +401,7 @@ sd_cmd_wait_status:
 
 read_status_ok:
   ; Save off R1 response
-  ;PUTS READ_STATUS_OK
+  ;DEBUG READ_STATUS_OK
   pha
 
   ; Check if we have an R3/R7 response following
@@ -431,7 +436,7 @@ sd_wait_data_token:
   cmp #$fe
   bne sd_wait_data_token
 
-  ;PUTS READING_BYTES
+  ;DEBUG READING_BYTES
 
   ; R1 contains data pointer
   ; R2 contains size
@@ -454,19 +459,21 @@ sd_read_data_loop1:
   dec R2+1
   beq sd_read_remainder
 
-  ;PUTS READ_BLOCK
+  ;DEBUG READ_BLOCK
 
   ldy #0
   jmp sd_read_data_loop1
 
 sd_read_remainder:
-  ;PUTS READING_REMAINDER
+  ;DEBUG READING_REMAINDER
 
   ldx R2
   beq sd_cmd_done
 
   ldy #0
 sd_read_data_loop2:
+
+  .ifdef VERBOSE
   lda #$01
   jsr lcd_cmd
 
@@ -483,14 +490,17 @@ sd_read_data_loop2:
 
   lda #" "
   jsr lcd_data
+  .endif
 
   jsr sd_read_byte
   sta (R1),y
 
+  .ifdef VERBOSE
   jsr print_hex
 
   lda #75
   jsr delayms
+  .endif
 
   iny
   dex
