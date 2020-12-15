@@ -10,7 +10,8 @@ SOURCES= \
     echo.s \
     sdio_hello.s \
     sdio_prg.s \
-    fat_test.s
+    fat_test.s \
+    xmodem.s
 
 PRG_SOURCES= \
     hello_world_load.s
