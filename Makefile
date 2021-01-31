@@ -33,10 +33,10 @@ include $(PRG_SOURCES:.s=.prg.d)
 	vasm6502_oldstyle -quiet -c02 -Fbin -dotdir -opt-branch -depend=make -o $*.prg $< > $@
 
 %.bin: %.s
-	vasm6502_oldstyle -c02 -Fbin -dotdir -opt-branch -DROM -o $@ $<
+	vasm6502_oldstyle -c02 -Fbin -dotdir -opt-branch -DROM -L $@.lst -o $@ $<
 
 %.prg: %.s
-	vasm6502_oldstyle -c02 -Fbin -dotdir -opt-branch -cbm-prg -o $@ $<
+	vasm6502_oldstyle -c02 -Fbin -dotdir -opt-branch -cbm-prg -L $@.lst -o $@ $<
 
 %.bin.burn: %.bin
 	minipro -p AT28C256 -w $<
