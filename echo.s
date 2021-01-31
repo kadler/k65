@@ -68,7 +68,13 @@ wait_rxd_full:
   ; Clear buffer
   lda ACIADTA
 
+  .ifdef ROM
   jmp send
+  .else
+  cmp #'u'
+  bne send
+  rts
+  .endif
 
   .include lcd.inc.s
   .include delay.inc.s
