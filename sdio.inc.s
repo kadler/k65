@@ -14,41 +14,14 @@ SD_DTA = $0300 ; Page aligned for ease of use
 SD_FLG_RSP = $80
 SD_FLG_DTA = $40
 
-  .macro PUTS
-  pha
-  lda R1
-  pha
-  lda R1+1
-  pha
+ERR_SRC_SDIO = 1
 
-  lda #<\1
-  sta R1
-  lda #>\1
-  sta R1+1
-  jsr puts2
-
-  pla
-  sta R1+1
-  pla
-  sta R1
-  pla
-  .endm
-
-puts2:
-  lda #$01
-  jsr lcd_cmd
-  jsr puts
-  lda #250
-  jsr delayms
-  jsr delayms
-  ; jsr delayms
-  rts
-
-  .macro DEBUG
-  .ifdef VERBOSE
-  PUTS \1
-  .endif
-  .endm
+ERR_NO_SD = 1
+ERR_SD_WAIT_FAIL = 2
+ERR_SD_SET_BLK_SIZE = 3
+ERR_SD_CHK_PAT = 4
+ERR_SD_READ_BLK = 5
+ERR_SD_DTA_TKN = 6
 
   .macro SET_CMD_FIELDS
   lda #($40 | \1)
@@ -101,14 +74,16 @@ hexdump:
   lda #$C0
   jsr lcd_cmd
   
-  ldy #0
+  ldy #4
 hex_loop:
   lda SD_DTA,y
   jsr print_hex
 
-  iny
-  cpy #16
-  bne hex_loop
+  ; iny
+  ; cpy #4
+  ; bne hex_loop
+  dey
+  bpl hex_loop
 
   rts
 
@@ -125,8 +100,6 @@ sd_init:
 ; The spec says *at least* 74 clocks must be sent, but Micropython and
 ; CircuitPython both use 80 clocks so we follow suit.
 init_micro:
-  DEBUG SD_INIT
-
   ; Make sure we're not selecting the SD card
   lda #SD_CSB
   sta PB2
@@ -151,29 +124,21 @@ init_micro:
   SET_CMD_FIELDS_CRC 0, 0, 0, $95
 
   ldx #5
-send_cmd0:
-  DEBUG SEND_CMD0
+.send_cmd0:
   jsr sd_cmd
   cmp #1
-  beq cmd0_done
+  beq .cmd0_done
 
   dex
-  bne send_cmd0
+  bne .send_cmd0
 
-  DEBUG NO_SDCARD
-  ; TODO: Carve out a memory location to serve as a status byte
-  sec
-  rts
+  jmp .no_sd_found
 
-cmd0_done:
-  DEBUG FOUND_SDCARD
-
+.cmd0_done:
   ; Once in idle state, we must send CMD8 to do V2 init
   ; TODO: We don't plan on doing V2 init, so do we even need
   ; to send this?
   SET_CMD_FIELDS_CRC 8, $01aa, SD_FLG_RSP, $87
-
-  DEBUG SEND_CMD8
   jsr sd_cmd
 
   ;cmp #$01
@@ -185,26 +150,23 @@ cmd0_done:
 ;sd_v2_init:
 ;  ; NOTE: We are not going to support high-capacity mode
 ;  ; so we're going to init as a v1 card
-;  DEBUG SD_V2_INIT
 
 ;  lda SD_ARG+3
 ;  cmp #$aa
 ;  beq sd_init
 
-;  DEBUG SD_CHECK_PATTERN_ERROR
-  
-;  jsr hexdump
-;check_pattern_error:
-;  jmp check_pattern_error
+; lda #ERR_SD_CHK_PAT
+; sta ERR_COD
+; sec
+; rts
 
 ;sd_v1_init:
-;  DEBUG SD_V1_INIT
 
 ;sd_init:
 
   ; We have now initialized t TODO
   ldx #200
-sd_init_loop:
+.init_loop:
   SET_CMD_FIELDS 55, 0, 0
   jsr sd_cmd
 
@@ -215,18 +177,15 @@ sd_init_loop:
   sta SD_CMD
 
   jsr sd_cmd
-  beq sd_init_done
+  beq .init_done
 
   dex
-  bne sd_init_loop
+  bne .init_loop
 
-  DEBUG SD_INIT_V1_FAIL
   sec
   rts
 
-sd_init_done:
-  DEBUG SD_INIT_V1_SUCCESS
-
+.init_done:
   ; CMD58: Read the Operations Condition Register (OCR)
   ; pre-set the command and flag, we'll need to re-adjust the
   ; SD_ARG field every time through the loop, but these can
@@ -237,20 +196,19 @@ sd_init_done:
   lda #SD_FLG_RSP
   sta SD_FLG
 
-send_cmd58:
+.send_cmd58:
   lda #0
   sta SD_ARG
   sta SD_ARG+1
   sta SD_ARG+2
   sta SD_ARG+3
 
-  DEBUG SEND_CMD58
   jsr sd_cmd
 
   lda SD_ARG
   ; CMD58 reads OCR in to SD_ARG
   ; top bit is 0 when SD is busy
-  bpl send_cmd58
+  bpl .send_cmd58
 
   ; Set block size to 512 bytes
   lda #($40 | 16)
@@ -265,18 +223,33 @@ send_cmd58:
   stz SD_FLG
 
   jsr sd_cmd
+  bne .set_block_size_error
 
-
-  DEBUG SD_READY
   clc
+.done:
   rts
+
+.error:
+  lda #ERR_SRC_SDIO
+  sta ERR_SRC
+  sec
+  jmp .done
+
+.set_block_size_error:
+  lda #ERR_SD_SET_BLK_SIZE
+  sta ERR_COD
+  jmp .error
+
+.no_sd_found:
+  lda #ERR_NO_SD
+  sta ERR_COD
+  jmp .error
 
 
 ; R1 = destination address
 ; R2 = source sector
 sd_read_sector:
   ; Read block
-  ; SET_CMD_FIELDS 17, (R4)<<16|(R3), SD_FLG_DTA
   lda #($40 | 17)
   sta SD_CMD
 
@@ -322,10 +295,10 @@ sd_read_sector:
 
 .error:
   sec
-  ; lda #ERR_SRC_SDIO
-  ; sta ERR_SRC
-  ; lda #ERR_SD_READ_BLK
-  ; sta ERR_COD
+  lda #ERR_SRC_SDIO
+  sta ERR_SRC
+  lda #ERR_SD_READ_BLK
+  sta ERR_COD
   jmp .done
 
 SD_MISO = $01
@@ -343,24 +316,26 @@ SD_CSB  = $01
 sd_wait_ready:
   pha
   phx
-  ;DEBUG SD_WAIT_READY
 
   ldx #200
 sd_wait_ready_loop:
   jsr sd_read_byte
 
   cmp #$ff
-  beq sd_is_ready
+  beq .ok
 
   dex
   bne sd_wait_ready_loop
 
-  DEBUG SD_FAIL_WAIT
+  lda #ERR_SD_WAIT_FAIL
+  sta ERR_COD
+  sec
+  jmp .done
 
-sd_fail_wait:
-  jmp sd_fail_wait
+.ok:
+  clc
 
-sd_is_ready:
+.done:
   plx
   pla
   rts
@@ -372,8 +347,6 @@ sd_is_ready:
 sd_read_byte:
   phx
   phy
-
-  ;DEBUG SD_READ_BYTE
 
   ldy #SD_MOSI
   sty PA2
@@ -407,8 +380,6 @@ sd_readb_loop:
 sd_write_byte:
   phx
   phy
-
-  ;DEBUG SD_WRITE_BYTE
 
   ldx #8
 sd_bit_loop:
@@ -445,8 +416,6 @@ sd_cmd:
   ; TODO: only if needed
   jsr sd_wait_ready
 
-  ;DEBUG SD_CMDS
-
   lda SD_CMD
   jsr sd_write_byte
 
@@ -465,9 +434,6 @@ sd_cmd:
   lda SD_CRC
   jsr sd_write_byte
 
-  ;DEBUG READ_STATUS
-  ; PUTS READ_STATUS
-
   ldx #200
 .wait_status_ok:
   jsr sd_read_byte
@@ -478,16 +444,11 @@ sd_cmd:
   dex
   bne .wait_status_ok
 
-  DEBUG READ_STATUS_FAIL
-;read_status_fail:
-  ;jmp read_status_fail
   pha
   jmp .done
 
 .status_ok:
   ; Save off R1 response
-  ;DEBUG READ_STATUS_OK
-  ; PUTS READ_STATUS_OK
   pha
 
   ; Check if we have an R3/R7 response following
@@ -516,44 +477,13 @@ sd_cmd:
   and #SD_FLG_DTA
   beq .done
 
-  ; PUTS READING_BYTES
-
-  lda #$01
-  jsr lcd_cmd
-  lda #$0c
-  jsr lcd_cmd
   ; Wait for SD data token
 .wait_data_token:
-  lda #$02
-  jsr lcd_cmd
-
   jsr sd_read_byte
-
-  jsr print_hex
-  
   bpl .data_token_error
 
   cmp #$fe
   bne .wait_data_token
-
-  jmp .read_data
-
-.data_token_error:
-  PUTS SD_CHECK_PATTERN_ERROR
-
-  pha
-  lda #$C0
-  jsr lcd_cmd
-
-  pla
-  jsr print_hex
-.debug:
-  jmp .debug
-  sec
-  jmp .done 
-
-
-  ;DEBUG READING_BYTES
 
   ; R1 contains data pointer
   ; R2 contains size
@@ -564,9 +494,6 @@ sd_cmd:
   ; Check if we have a remainder
   lda R2
   beq .read_page
-
-  ;DEBUG READING_REMAINDER
-  ; PUTS READING_REMAINDER
 
   ldx R2
   beq .done
@@ -654,8 +581,6 @@ sd_cmd:
   lda R2+1
   beq .read_done
 
-  ; PUTS READ_BLOCK
-
 .read_page:
   ldy #0
 .read_byte:
@@ -719,10 +644,6 @@ sd_cmd:
   bne .read_page
 
 .read_done:
-;dummy:
-  ;jmp dummy
-
-  ; PUTS HEX
 
   ; Must read CRC, even though we don't check it
   jsr sd_read_byte
@@ -747,80 +668,12 @@ sd_cmd:
   ora #0
   rts
 
-READING_BYTES
-  .asciiz "Gathering data"
-
-READ_BLOCK
-  .asciiz "Read a block"
-
-READING_REMAINDER
-  .asciiz "Reading remaind."
-
-READ_STATUS
-  .asciiz "Reading SD status"
-
-READ_STATUS_OK
-  .asciiz "Read status ok"
-
-READ_STATUS_FAIL
-  .asciiz "Read status failed"
-
-NO_SDCARD
-  .asciiz "No SD card found!"
-
-FOUND_SDCARD
-  .asciiz "Found SD. Woohoo!"
-
-SD_FAIL_WAIT
-  .asciiz "SD failed wait"
-
-SD_INIT
-  .asciiz "Init. SD card"
-
-CMD_ERROR:
-  .asciiz "Command failed"
-
-SEND_CMD0:
-  .asciiz "Sending CMD0"
-
-SEND_CMD8:
-  .asciiz "Sending CMD8"
-
-SEND_CMD16:
-  .asciiz "Sending CMD16"
-
-SEND_CMD17:
-  .asciiz "Sending CMD17"
-
-SEND_CMD58:
-  .asciiz "Sending CMD58"
-
-SD_V2_INIT:
-  .asciiz "SDVER2 init"
-
-SD_V1_INIT:
-  .asciiz "SDVER1 init"
-
-SD_INIT_V1_SUCCESS:
-  .asciiz "SD init success"
-
-SD_INIT_V1_FAIL:
-  .asciiz "SD init failure"
-
-SD_CMDS
-  .asciiz "Sending SD cmd"
-
-SD_READ_BYTE
-  .asciiz "Reading byte"
-
-SD_WRITE_BYTE
-  .asciiz "Writing byte"
-
-SD_WAIT_READY
-  .asciiz "Waiting for SD card to be ready"
-
-SD_READY
-  .asciiz "SD is ready"
+.data_token_error:
+  lda #ERR_SRC_SDIO
+  sta ERR_SRC
+  lda #ERR_SD_DTA_TKN
+  sta ERR_COD
+  jmp .done
 
 SD_CHECK_PATTERN_ERROR
   .asciiz "Check pattern error"
