@@ -1,6 +1,10 @@
 R1 = $02
 R2 = $04
 R3 = $06
+R4 = $08
+
+ERR_SRC = $ff
+ERR_COD = $fe
 
 ; --- VIA 2 ---
 ; TODO: Legacy names - use ORB/ORA instead

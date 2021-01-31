@@ -9,7 +9,8 @@ SOURCES= \
     interrupt_game.s \
     echo.s \
     sdio_hello.s \
-    sdio_prg.s
+    sdio_prg.s \
+    fat_test.s
 
 PRG_SOURCES= \
     hello_world_load.s

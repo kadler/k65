@@ -7,6 +7,8 @@ SD_ARG = $0201
 SD_CRC = $0205
 SD_FLG = $0206
 
+SD_TMP = $0207
+
 SD_DTA = $0300 ; Page aligned for ease of use
 
 SD_FLG_RSP = $80
@@ -14,11 +16,21 @@ SD_FLG_DTA = $40
 
   .macro PUTS
   pha
+  lda R1
+  pha
+  lda R1+1
+  pha
+
   lda #<\1
   sta R1
   lda #>\1
   sta R1+1
   jsr puts2
+
+  pla
+  sta R1+1
+  pla
+  sta R1
   pla
   .endm
 
@@ -29,6 +41,7 @@ puts2:
   lda #250
   jsr delayms
   jsr delayms
+  ; jsr delayms
   rts
 
   .macro DEBUG
@@ -239,10 +252,81 @@ send_cmd58:
   ; top bit is 0 when SD is busy
   bpl send_cmd58
 
+  ; Set block size to 512 bytes
+  lda #($40 | 16)
+  sta SD_CMD
+
+  stz SD_ARG
+  stz SD_ARG+1
+  lda #>512
+  sta SD_ARG+2
+  stz SD_ARG+3
+  
+  stz SD_FLG
+
+  jsr sd_cmd
+
+
   DEBUG SD_READY
   clc
   rts
 
+
+; R1 = destination address
+; R2 = source sector
+sd_read_sector:
+  ; Read block
+  ; SET_CMD_FIELDS 17, (R4)<<16|(R3), SD_FLG_DTA
+  lda #($40 | 17)
+  sta SD_CMD
+
+  ; Convert 16-bit sector (512 byte) sector address
+  ; to 32-bit byte address in to R3/R4
+  ; Multiplying by 512 is shifting left by 9. We do
+  ; the first 8 shifts by shifting the byte target
+  ; and then shift left by 1. eg.
+  ; Normal widening:
+  ; R2 -> R3
+  ; R2+1 -> R3+1
+  ; 0 -> R4
+  ; 0 -> R4+1
+  ;
+  ; Widening and multiplying:
+  ; 0 -> R3
+  ; R2 << 1 -> R3+1
+  ; R2+1 << 1 -> R4
+  ; 0 -> R4+1
+  stz SD_ARG+3
+  clc
+  lda R2
+  rol
+  sta SD_ARG+2
+  lda R2+1
+  rol
+  sta SD_ARG+1
+  stz SD_ARG
+
+  lda #SD_FLG_DTA
+  sta SD_FLG
+
+  stz R2
+  lda #>512
+  sta R2+1
+
+  jsr sd_cmd
+  bne .error
+
+  clc
+.done:
+  rts
+
+.error:
+  sec
+  ; lda #ERR_SRC_SDIO
+  ; sta ERR_SRC
+  ; lda #ERR_SD_READ_BLK
+  ; sta ERR_COD
+  jmp .done
 
 SD_MISO = $01
 SD_MOSI = $80
@@ -382,33 +466,35 @@ sd_cmd:
   jsr sd_write_byte
 
   ;DEBUG READ_STATUS
+  ; PUTS READ_STATUS
 
   ldx #200
-sd_cmd_wait_status:
+.wait_status_ok:
   jsr sd_read_byte
   ora #0
 
-  bpl read_status_ok
+  bpl .status_ok
 
   dex
-  bne sd_cmd_wait_status
+  bne .wait_status_ok
 
   DEBUG READ_STATUS_FAIL
 ;read_status_fail:
   ;jmp read_status_fail
   pha
-  jmp sd_cmd_done
+  jmp .done
 
-read_status_ok:
+.status_ok:
   ; Save off R1 response
   ;DEBUG READ_STATUS_OK
+  ; PUTS READ_STATUS_OK
   pha
 
   ; Check if we have an R3/R7 response following
   ; the R1 response we already received
   lda SD_FLG
   and #SD_FLG_RSP
-  beq sd_check_data
+  beq .check_data
 
   jsr sd_read_byte
   sta SD_ARG
@@ -423,18 +509,49 @@ read_status_ok:
   sta SD_ARG+3
 
   ; No commands have both R3/R7 _and_ data
-  jmp sd_cmd_done
+  jmp .done
 
-sd_check_data:
+.check_data:
   lda SD_FLG
   and #SD_FLG_DTA
-  beq sd_cmd_done
+  beq .done
 
+  ; PUTS READING_BYTES
+
+  lda #$01
+  jsr lcd_cmd
+  lda #$0c
+  jsr lcd_cmd
   ; Wait for SD data token
-sd_wait_data_token:
+.wait_data_token:
+  lda #$02
+  jsr lcd_cmd
+
   jsr sd_read_byte
+
+  jsr print_hex
+  
+  bpl .data_token_error
+
   cmp #$fe
-  bne sd_wait_data_token
+  bne .wait_data_token
+
+  jmp .read_data
+
+.data_token_error:
+  PUTS SD_CHECK_PATTERN_ERROR
+
+  pha
+  lda #$C0
+  jsr lcd_cmd
+
+  pla
+  jsr print_hex
+.debug:
+  jmp .debug
+  sec
+  jmp .done 
+
 
   ;DEBUG READING_BYTES
 
@@ -443,77 +560,175 @@ sd_wait_data_token:
   ; First iteration through the loop reads the "remainder"
   ; Later iterations always read 256 bytes at a time
 
-  ; Check if we have > 255 bytes
-  lda R2+1
-  beq sd_read_remainder
+.read_data:
+  ; Check if we have a remainder
+  lda R2
+  beq .read_page
 
-  ldy #0
-sd_read_data_loop1:
-  jsr sd_read_byte
-  sta (R1),y
-
-  iny
-  bne sd_read_data_loop1
-
-  inc R1+1
-  dec R2+1
-  beq sd_read_remainder
-
-  ;DEBUG READ_BLOCK
-
-  ldy #0
-  jmp sd_read_data_loop1
-
-sd_read_remainder:
   ;DEBUG READING_REMAINDER
+  ; PUTS READING_REMAINDER
 
   ldx R2
-  beq sd_cmd_done
+  beq .done
 
   ldy #0
-sd_read_data_loop2:
+.read_remainder_byte:
 
   .ifdef VERBOSE
   lda #$01
   jsr lcd_cmd
 
-  lda R1
-  jsr print_hex
+  .if 0
   lda R1+1
   jsr print_hex
+  lda R1
+  jsr print_hex
+  .else
+  lda SD_ARG
+  jsr print_hex
+  lda SD_ARG+1
+  jsr print_hex
+  lda SD_ARG+2
+  jsr print_hex
+  lda SD_ARG+3
+  jsr print_hex
+
+  clc
+  lda SD_ARG+3
+  adc #1
+  sta SD_ARG+3
+  lda SD_ARG+2
+  adc #0
+  sta SD_ARG+2
+  lda SD_ARG+1
+  adc #0
+  sta SD_ARG+1
+  lda SD_ARG
+  adc #0
+  sta SD_ARG
+  .endif
 
   lda #" "
   jsr lcd_data
 
+  .if 0
   tya
   jsr print_hex
 
   lda #" "
   jsr lcd_data
   .endif
+  .endif
 
   jsr sd_read_byte
   sta (R1),y
 
   .ifdef VERBOSE
+  jsr putc
+
+  pha
+  lda #' '
+  jsr putc
+  pla
+
   jsr print_hex
 
-  lda #75
+  lda #200
   jsr delayms
   .endif
 
   iny
   dex
-  bne sd_read_data_loop2
+  bne .read_remainder_byte
 
+  ; Remainder has been read, adjust address and size
+  lda R1
+  sec
+  sbc R2
+  sta R1
+  lda R1
+  sbc #0
+  sta R1
+  stz R2
+
+  lda R2+1
+  beq .read_done
+
+  ; PUTS READ_BLOCK
+
+.read_page:
+  ldy #0
+.read_byte:
+
+  .ifdef VERBOSE
+  lda #$01
+  jsr lcd_cmd
+
+  lda SD_ARG
+  jsr print_hex
+  lda SD_ARG+1
+  jsr print_hex
+  lda SD_ARG+2
+  jsr print_hex
+  lda SD_ARG+3
+  jsr print_hex
+
+  clc
+  lda SD_ARG+3
+  adc #1
+  sta SD_ARG+3
+  lda SD_ARG+2
+  adc #0
+  sta SD_ARG+2
+  lda SD_ARG+1
+  adc #0
+  sta SD_ARG+1
+  lda SD_ARG
+  adc #0
+  sta SD_ARG
+
+  lda #" "
+  jsr lcd_data
+  .endif
+
+  jsr sd_read_byte
+  sta (R1),y
+
+  .ifdef VERBOSE
+  jsr putc
+
+  pha
+  lda #' '
+  jsr putc
+  pla
+
+  jsr print_hex
+
+  lda #100
+  jsr delayms
+  .endif
+
+  iny
+  bne .read_byte
+
+  ; increment page poitner
+  inc R1+1
+  ; decrement page count
+  dec R2+1
+  ; if page count is not zero, read another page
+  bne .read_page
+
+.read_done:
 ;dummy:
   ;jmp dummy
+
+  ; PUTS HEX
 
   ; Must read CRC, even though we don't check it
   jsr sd_read_byte
   jsr sd_read_byte
 
-sd_cmd_done:
+.done:
   ; stop selecting this device
   lda #SD_CSB
   sta PB2
