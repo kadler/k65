@@ -9,9 +9,11 @@ message = $0204
 
   .include header.inc.s
 
+  .ifdef ROM
 nmi:
 irq:
   rti
+  .endif
 
 reset:
   jsr lcd_init
@@ -91,9 +93,21 @@ print:
   jmp print
 
 done:
-  jmp done
+  lda #250
+  jsr delayms
+  jsr delayms
+  jsr delayms
+  jsr delayms
+
+  .ifdef ROM
+.here:
+  jmp .here
+  .else
+  rts
+  .endif
 
   .include lcd.inc.s
+  .include delay.inc.s
 
 number: .word 3742
 

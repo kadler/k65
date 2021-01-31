@@ -8,13 +8,22 @@
 VERBOSE = 1
 
   .include header.inc.s
+
+  .ifndef ROM
+main:
+  jmp reset
+  .endif
+
+  ; sdio.inc.s needs to come first for PUTS definition
   .include lcd.inc.s
   .include delay.inc.s
   .include sdio.inc.s
 
+  .ifdef ROM
 nmi:
 irq:
   rti
+  .endif
 
 reset:
   jsr lcd_init
@@ -40,7 +49,11 @@ reset:
   jsr puts
 
 .done:
+  .ifdef ROM
   jmp .done
+  .else
+  rts
+  .endif
 
 
 sd_load_string:

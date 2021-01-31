@@ -7,9 +7,11 @@
 
   .include header.inc.s
 
+  .ifdef ROM
 nmi:
 irq:
   rti
+  .endif
 
 reset:
   jsr lcd_init

@@ -8,9 +8,10 @@
 
 puts = $8000
 lcd_cmd = $8003
+delayms = $8006
 
-  .org $2000
- 
+  .org $5000
+
 main:
   pha
 
