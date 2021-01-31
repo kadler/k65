@@ -37,7 +37,7 @@ EQUATIONS
 IO = /A15 * A14 * A13 * A12 *       ; 0x7f00 - 0x7fff
       A11 * A10 * A9 * A8
 
-;xxxxxx = IO * /A7 * /A6            ; 0x7fc0 - 0x7fff
+;xxxxxx = IO *  A7 *  A6            ; 0x7fc0 - 0x7fff
 /aciaCS = IO *  A7 * /A6            ; 0x7f80 - 0x7fbf
 /via2CS = IO * /A7 *  A6            ; 0x7f40 - 0x7f7f
 /via1CS = IO * /A7 * /A6            ; 0x7f00 - 0x7f3f
