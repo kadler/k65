@@ -2,6 +2,10 @@
 
 ; SPDX-License-Identifier: GPL-3.0-or-later
 
+  .ifndef SDIO_INC
+SDIO_INC = 1
+
+
 SD_CMD = $0200
 SD_ARG = $0201
 SD_CRC = $0205
@@ -680,5 +684,7 @@ SD_CHECK_PATTERN_ERROR
 
 HEX
   .text "0123456789ABCDEF"
+
+  .endif
 
 ; vim: syntax=asm6502

@@ -1,3 +1,7 @@
+
+  .ifndef REGISTERS_INC
+REGISTERS_INC = 1
+
 R1 = $02
 R2 = $04
 R3 = $06
@@ -55,3 +59,5 @@ ACIADTA  = $7f80
 ACIASTS  = $7f81
 ACIACMD  = $7f82
 ACIACTL  = $7f83
+
+  .endif

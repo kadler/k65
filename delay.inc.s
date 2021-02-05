@@ -1,3 +1,6 @@
+  .ifndef DELAY_INC
+DELAY_INC = 1
+
 ; Delay # of milliseconds in the a register
 ; Hand optimized for 1.8432MHz clock
 delayms:
@@ -24,3 +27,5 @@ delayms:
   pla                ; 4 cycles
 
   rts
+
+  .endif

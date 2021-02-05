@@ -2,6 +2,9 @@
 
 ; SPDX-License-Identifier: GPL-3.0-or-later
 
+  .ifndef LCD_INC
+LCD_INC = 1
+
 puts:
   pha
   phy
@@ -111,5 +114,7 @@ lcd_cmd:
 
   pla
   rts
+
+  .endif
 
 ; vim: syntax=asm6502

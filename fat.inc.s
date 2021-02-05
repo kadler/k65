@@ -2,6 +2,9 @@
 
 ; SPDX-License-Identifier: GPL-3.0-or-later
 
+  .ifndef FAT_INC
+FAT_INC = 1
+
   .include lcd.inc.s
   .include delay.inc.s
   .include sdio.inc.s
@@ -653,3 +656,5 @@ memcpy8_upd:
 
 found_prg:
   .asciiz 'Loading'
+
+  .endif
