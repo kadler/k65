@@ -9,6 +9,145 @@ FAT_INC = 1
   .include delay.inc.s
   .include sdio.inc.s
 
+ ; Basic MBR and FAT16 implementation for 6502
+ ; based off of information from
+ ; - https://en.wikipedia.org/wiki/Master_boot_record
+ ; - https://en.wikipedia.org/wiki/Design_of_the_FAT_file_system
+ ; - https://www.win.tue.nl/~aeb/linux/fs/fat/fat-1.html
+ ;
+ ; PC-compatible disks traditionally use the Master Boot Record partitioning
+ ; scheme, which contains data in the first 512-byte sector of the disk,
+ ; including a parition table for 4 partitions. Each partition table entry
+ ; contains an address to the start of the first sector of the partition.
+ ;
+ ; From there, we can address the FAT16 filesystem data.
+ ;
+ ; The basic overview of everything looks like this:
+ ;
+ ;   Master Boot Record
+ ; +-------------------+
+ ; | Bootstrap code    |            Partition Table Entry
+ ; |      ...          |          / +-------------------+
+ ; | Partition entry 1 | --+      | | Partition Status  |
+ ; | Partition entry 2 |   |      | | CHS start address |
+ ; | Partition entry 3 |   +---- <  | Parition type     |
+ ; | Partition entry 4 |          | | CHS end address   |
+ ; | Boot Signature    |          | | LBA start address | --+
+ ; +-------------------+          | | Number of Sectors |   |
+ ;                                \ +-------------------+   |
+ ;                                                          |
+ ;    +-----------------------------------------------------+
+ ;    |
+ ;    |                             FAT16 Boot Sector
+ ;    +-------------------> +-----------------------------------+
+ ;    |                     | Jump instruction                  |
+ ;    |                     | OEM name                          |
+ ;    |                     | Bytes per sector                  |
+ ;    V                     | Sectors per cluster               |
+ ;   (+)<------------------ | # reserved sectors                |
+ ;    |    +--------------- | # of file allocation tables (FATs)|
+ ;    |    |    +---------- | Maximum # root directory entries  |
+ ;    |    |    |           | Total sectors                     |
+ ;    |    V    |           | Media type                        |
+ ;    |   (×)<------------- | Sectors per FAT                   |
+ ;    |    |    |           | Sectors per track                 |
+ ;    |    |    |           | # of heads                        |
+ ;    |    |    |           | # of hidden sectors               |
+ ;    |    |    |           | Total sectors (if > 65535)        |
+ ;    |    |   (/)<-- 16    | Physical drive number             |
+ ;    |    |    |           | Reserved                          |
+ ;    |    |    |           | Extended boot signature           |
+ ;    |    |    |           | Volume ID                         |
+ ;    |    |    |           | Partition Volume Label            |
+ ;    |    |    |           | File system type                  |
+ ;    |    |    |           +-----------------------------------+
+ ;    |    |    |
+ ;    |    |    |
+ ;    |    |    |
+ ;    |    |    |                  File Allocation Table (FAT)
+ ;    |    |    |                         Cluster Map
+ ;    |    |    |                0         1         2         3
+ ;    +-------------------> +---------+---------+---------+---------+      \
+ ;    |    |    |           |         |         |         |         |      |
+ ;    |    |    |        0  |  F0 FF  |  FF FF  |  00 00  |  04 00  |      |
+ ;    |    |    |           |   (0)   |   (1)   |   (2)   |   (3)   |      |
+ ;    |    |    |           +---------+---------+---------+---------+      |
+ ;    |    |    |           |         |         |         |         |      |
+ ;    |    |    |        1  |  05 00  |  FF FF  |  07 00  |  08 00  |      |
+ ;    |    |    |           |   (4)   |   (5)   |   (6)   |   (7)   |      |
+ ;    |    |    |           +---------+---------+---------+---------+      |
+ ;    |    |    |           |         |         |         |         |      |
+ ;    |    |    |        2  |  FF FF  |  00 00  |  00 00  |  00 00  |       > ------------+
+ ;    |    |    |           |   (8)   |   (9)   |   (10)  |   (11)  |      |              |
+ ;    V    |    |           +---------+---------+---------+---------+      |              |
+ ;   (+)<--+    |           |         |         |         |         |      |              |
+ ;    |         |        3  |  00 00  |  0e 00  |  10 00  |  0d 00  |      |              |
+ ;    |         |           |   (12)  |   (13)  |   (14)  |   (15)  |      |              |
+ ;    |         |           +---------+---------+---------+---------+      |              |
+ ;    |         |           |         |         |         |         |      |              |
+ ;    |         |        4  |  11 00  |  12 00  |  FF FF  |  0f 00  | <-+  |              |
+ ;    |         |           |   (16)  |   (17)  |   (18)  |   (19)  |   |  |              |
+ ;    |         |           +---------+---------+---------+---------+   |  /              |
+ ;    |         |                           ...                         |                 |
+ ;    |         |                                                       |                 |
+ ;    |         |                                                       |                 |
+ ;    |         |                                                       +--------------+  |
+ ;    |         |            Root Directory Entries                                    |  |
+ ;    +-------------------> +----------------------+              Directory Entry      |  |
+ ;    |         |           | Directory Entry 1    |--+      / +-------------------+   |  |
+ ;    |         |           | Directory Entry 2    |  |      | | File name         |   |  |
+ ;    |         |           | Directory Entry 3    |  |      | | File extension    |   |  |
+ ;    |         |           |        ...           |  +---- <  | Attributes        |   |  |
+ ;    |         |           | Directory Entry 14   |         | | OS-specific attrs |   |  |
+ ;    |         |           | Directory Entry 15   |         | | Modified Time     |   |  |
+ ;    |         |           | Directory Entry 16   |         | | Modified Date     |   |  |
+ ;    |         |           +----------------------+         | | Starting cluster  | --+->+
+ ;    V         |           | Directory Entry 17   |         | | File Size         |      |
+ ;   (+)<------(÷)<--16     | Directory Entry 18   |         \ +-------------------+      |
+ ;    |                     | Directory Entry 19   |                                      |
+ ;    |                     |        ...           |                                      |
+ ;    |                     | Directory Entry 30   |                                      |
+ ;    |                     | Directory Entry 31   |                                      |
+ ;    |                     | Directory Entry 32   |                                      |
+ ;    |                     +----------------------+                                      |
+ ;    |                              ...                                                  |
+ ;    |                                                                                   |
+ ;    |                                                                                   |
+ ;    |                          Start of Data                                            |
+ ;    +-------------------> +----------------------+  \                                   |
+ ;                          |      Cluster 1       |  |                                   |
+ ;                          +----------------------+  |                                   |
+ ;                          |      Cluster 2       |  |                                   |
+ ;                          +----------------------+  |                                   |
+ ;                          |      Cluster 3       |  |                                   |
+ ;                          +----------------------+  |                                   |
+ ;                          |      Cluster 4       |  |                                   |
+ ;                          +----------------------+  |                                   |
+ ;                          |        ...           |   > <--------------------------------+
+ ;                          +----------------------+  |
+ ;                          |      Cluster n-2     |  |
+ ;                          +----------------------+  |
+ ;                          |      Cluster n-1     |  |
+ ;                          +----------------------+  |
+ ;                          |      Cluster n       |  |
+ ;                          +----------------------+  /
+ ;
+ ;
+ ; The FAT contains a cluster map that forms linked lists of cluster numbers
+ ; for each file in the filesystem. Each linked list contains the cluster
+ ; numbers making up that file, with the starting cluster for the file
+ ; being found from the directory entry.
+ ;
+ ; There are two reserved clusters:
+ ;   - Cluster 0 is the FAT ID
+ ;   - Cluster 1 is the end of chain marker (almost always $FFFF)
+ ;  Cluster special values:
+ ;   - $0000 - free cluster
+ ;   - $FF7F - cluster is bad/damaged
+ ; This above example has 3 cluster chains:
+ ;   - 3 -> 4 -> 5
+ ;   - 6 -> 7 -> 8
+ ;   - 11 -> 15 -> 13 -> 14 -> 16 -> 17
 
 FAT_DATA = $0400
 
