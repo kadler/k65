@@ -149,7 +149,9 @@ FAT_INC = 1
  ;   - 6 -> 7 -> 8
  ;   - 11 -> 15 -> 13 -> 14 -> 16 -> 17
 
-FAT_DATA = $0400
+; Reserve 512 bytes for a full sector
+SECTOR_DTA  = $0400
+SECTOR_DTA2 = $0500
 
 PUTS_BUFFER = $0210
 
@@ -167,9 +169,9 @@ fat16_init:
   bcs .error_2
 
   ; Read in the Master Boot Record (MBR) in sector 0
-  lda #<FAT_DATA
+  lda #<SECTOR_DTA
   sta R1
-  lda #>FAT_DATA
+  lda #>SECTOR_DTA
   sta R1+1
 
   stz R2
@@ -229,23 +231,23 @@ fat16_init:
   ; Read FAT Boot sector from the partition's starting sector
   ; We can only read the first 65536 sectors in this code
   ; 32MiB should be enough for anyone, right?
-  lda FAT_DATA + PTE1 + 10
+  lda SECTOR_DTA + PTE1 + 10
   bne .partition_offset_error
-  lda FAT_DATA + PTE1 + 11
+  lda SECTOR_DTA + PTE1 + 11
   bne .partition_offset_error
 
   ; NOTE: We need to push R2 on to the stack for later, since
   ; sd_read_sector overwrites it.
-  lda FAT_DATA + PTE1 + 8
+  lda SECTOR_DTA + PTE1 + 8
   sta R2
   pha
-  lda FAT_DATA + PTE1 + 9
+  lda SECTOR_DTA + PTE1 + 9
   sta R2+1
   pha
   
-  lda #<FAT_DATA
+  lda #<SECTOR_DTA
   sta R1
-  lda #>FAT_DATA
+  lda #>SECTOR_DTA
   sta R1+1
 
   jsr sd_read_sector
@@ -290,22 +292,22 @@ fat16_init:
   ; 510 511  (ushort)  signature
 
   ; Validate signature is $55aa
-  lda FAT_DATA+510
+  lda SECTOR_DTA+510
   cmp #$55
   bne .invalid_signature_error
-  lda FAT_DATA+511
+  lda SECTOR_DTA+511
   cmp #$aa
   bne .invalid_signature_error
 
   ; Ensure 512 bytes per sector
-  lda FAT_DATA+11
+  lda SECTOR_DTA+11
   bne .sector_size_error
-  lda FAT_DATA+12
+  lda SECTOR_DTA+12
   cmp #2
   bne .sector_size_error
 
   ; Ensure 1 sector per cluster
-  lda FAT_DATA+13
+  lda SECTOR_DTA+13
   cmp #1
   bne .cluster_size_error
 
@@ -314,10 +316,10 @@ fat16_init:
   ; sectors to the header address and save this in FAT_ADDRESS for later use
   clc
   lda R2+1
-  adc FAT_DATA+14
+  adc SECTOR_DTA+14
   sta FAT_ADDRESS
   lda R2
-  adc FAT_DATA+15
+  adc SECTOR_DTA+15
   sta FAT_ADDRESS+1
 
   ; Determine the address of the root directory entries, which is stored
@@ -338,10 +340,10 @@ fat16_init:
   ; the high byte
   clc
 
-  ldx FAT_DATA+16
+  ldx SECTOR_DTA+16
 .fat_size_loop:
   lda DIR_ADDRESS
-  adc FAT_DATA+22
+  adc SECTOR_DTA+22
   sta DIR_ADDRESS
 
   lda DIR_ADDRESS+1
@@ -362,12 +364,12 @@ fat16_init:
   ; We do this in-place, since we don't use this value again.
   ldx #4
 .dir_size_loop:
-  lda FAT_DATA+18
+  lda SECTOR_DTA+18
   lsr
-  sta FAT_DATA+18
-  lda FAT_DATA+17
+  sta SECTOR_DTA+18
+  lda SECTOR_DTA+17
   ror
-  sta FAT_DATA+17
+  sta SECTOR_DTA+17
 
   dex
   bne .dir_size_loop
@@ -376,10 +378,10 @@ fat16_init:
   ; the directory entry to get the data address.
   clc
   lda DIR_ADDRESS
-  adc FAT_DATA+17
+  adc SECTOR_DTA+17
   sta DTA_ADDRESS
   lda DIR_ADDRESS+1
-  adc FAT_DATA+18
+  adc SECTOR_DTA+18
   sta DTA_ADDRESS+1
 
 
@@ -458,9 +460,9 @@ fat16_init:
 ;
 fat16_load_prg:
   ; Read first 16 directory entries
-  lda #<FAT_DATA
+  lda #<SECTOR_DTA
   sta R1
-  lda #>FAT_DATA
+  lda #>SECTOR_DTA
   sta R1+1
 
   lda DIR_ADDRESS
@@ -504,14 +506,14 @@ fat16_load_prg:
   ;   which we're going to skip - don't want to deal with UCS-2
 
   ; If file name starts with NUL, it's the last entry
-  lda FAT_DATA,y
+  lda SECTOR_DTA,y
   beq .not_found_error
   cmp #$2e
   beq .dir_loop_next
   cmp #$e5
   beq .dir_loop_next
 
-  lda FAT_DATA+11,y
+  lda SECTOR_DTA+11,y
   cmp #$0f
   beq .dir_loop_next
 
@@ -527,18 +529,18 @@ fat16_load_prg:
   ; we also need to reserve pages for global and system data.
   ;
   ; Thus, we ensure that the size is less than 29k
-  lda FAT_DATA+31,y
+  lda SECTOR_DTA+31,y
   bne .dir_loop_next
-  lda FAT_DATA+30,y
+  lda SECTOR_DTA+30,y
   bne .dir_loop_next
-  lda FAT_DATA+29,y
+  lda SECTOR_DTA+29,y
   cmp #$74
   ; < 29k is OK
   bmi .file_size_ok
   ; > 29k is BAD
   bne .dir_loop_next
   ; = 29k, check low byte is 0
-  lda FAT_DATA+28,y
+  lda SECTOR_DTA+28,y
   bne .dir_loop_next
 
 
@@ -547,7 +549,7 @@ fat16_load_prg:
   phy
 
   ; Need to loop over each byte of the file name and extension
-  ; This would require adding 2 offsets to our FAT_DATA absolute
+  ; This would require adding 2 offsets to our SECTOR_DTA absolute
   ; address: offset to current entry and offset to current character
   ; The 6502 does not have such addressing modes, however, so we
   ; need to use indirect addressing by calculating the address
@@ -555,13 +557,13 @@ fat16_load_prg:
   ; We could have done this for the rest of the loop too, but
   ; indirect addressing is slower so we only use it when necessary.
   ;
-  ; R1 = FAT_DATA + y
+  ; R1 = SECTOR_DTA + y
   clc
   tya
-  adc #<FAT_DATA
+  adc #<SECTOR_DTA
   sta R1
   lda #0
-  adc #>FAT_DATA
+  adc #>SECTOR_DTA
   sta R1+1
 
   ; Copy the unpadded part of the file name
@@ -646,10 +648,10 @@ fat16_load_prg:
   ; Subtract 2 from starting file cluster, since the first two
   ; clusters contain the FAT id and the end of chain marker
   sec
-  lda FAT_DATA+26,y
+  lda SECTOR_DTA+26,y
   sbc #2
   sta ADDR_TEMP
-  lda FAT_DATA+27,y
+  lda SECTOR_DTA+27,y
   sbc #0
   sta ADDR_TEMP+1
   ; Starting cluster was invalid? (ie. < 2)
@@ -666,9 +668,9 @@ fat16_load_prg:
   sta ADDR_TEMP+1
 
   ; Read the first sector of data
-  lda #<FAT_DATA
+  lda #<SECTOR_DTA
   sta R1
-  lda #>FAT_DATA
+  lda #>SECTOR_DTA
   sta R1+1
 
   lda ADDR_TEMP
@@ -681,14 +683,14 @@ fat16_load_prg:
 
   ; Copy the program data to the load address stored in the
   ; first two bytes of the file
-  lda #<(FAT_DATA+2)
+  lda #<(SECTOR_DTA+2)
   sta R1
-  lda #>(FAT_DATA+2)
+  lda #>(SECTOR_DTA+2)
   sta R1+1
 
-  lda FAT_DATA
+  lda SECTOR_DTA
   sta R2
-  lda FAT_DATA+1
+  lda SECTOR_DTA+1
   sta R2+1
 
   ; copy first 256 bytes
@@ -700,10 +702,10 @@ fat16_load_prg:
   jsr memcpy8_upd
 
   ; Return the load address in R1
-  lda FAT_DATA
+  lda SECTOR_DTA
   sta R1
   jsr print_hex
-  lda FAT_DATA+1
+  lda SECTOR_DTA+1
   sta R1+1
   jsr print_hex
 
