@@ -49,29 +49,6 @@ ERR_SD_DTA_TKN = 6
   .endm
 
 
-print_hex:
-  phx
-  pha
-
-  lsr
-  lsr
-  lsr
-  lsr
-  tax
-  lda HEX,x
-  jsr lcd_data
-
-  pla
-  pha
-  and #$0f
-  tax
-  lda HEX,x
-  jsr lcd_data
-
-  pla
-  plx
-  rts
-
 hexdump:
 
   ; Move to line 2
@@ -681,9 +658,6 @@ sd_cmd:
 
 SD_CHECK_PATTERN_ERROR
   .asciiz "Check pattern error"
-
-HEX
-  .text "0123456789ABCDEF"
 
   .endif
 

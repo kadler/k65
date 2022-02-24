@@ -5,6 +5,32 @@
   .ifndef LCD_INC
 LCD_INC = 1
 
+HEX
+  .text "0123456789ABCDEF"
+
+print_hex:
+  phx
+  pha
+
+  lsr
+  lsr
+  lsr
+  lsr
+  tax
+  lda HEX,x
+  jsr lcd_data
+
+  pla
+  pha
+  and #$0f
+  tax
+  lda HEX,x
+  jsr lcd_data
+
+  pla
+  plx
+  rts
+
 puts:
   pha
   phy

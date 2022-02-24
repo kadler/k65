@@ -128,27 +128,6 @@ xmodem_rcv_pkt:
   rts
 
 
-print_hex:
-   pha
-
-   lsr
-   lsr
-   lsr
-   lsr
-   ora #$30
-   jsr putc
-
-   pla
-
-   pha
-   and #$0f
-   ora #$30
-   jsr putc
-
-   pla
-   rts
-
-
   .ifdef VALIDATE
 xmodem_validate_pkt:
   pha
