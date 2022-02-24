@@ -95,6 +95,7 @@ reset:
   ; Initialize the ACIA
   jsr acia_init
 
+  ; Print a welcome message
   lda #<WELCOME
   sta R1
   lda #>WELCOME
@@ -103,8 +104,10 @@ reset:
   jsr puts
   jsr acia_puts
 
-
+  ; Enter the main loop
 mainloop:
+  jsr lcd_line_two
+
   jsr acia_check_data
   bcs mainloop
 
@@ -151,6 +154,7 @@ WELCOME:
 
 
   .include acia.inc.s
+  .include monitor.inc.s
   .include delay.inc.s
   .include lcd.inc.s
   .include sdio.inc.s

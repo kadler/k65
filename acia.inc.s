@@ -133,6 +133,97 @@ acia_init:
   sta ACIACMD
 
   pla
+  ; fall through to acia_clear_buffer
+
+acia_clear_buffer:
+  stz BUFLEN
+  stz RCVBUF
+  rts
+
+acia_check_data:
+  phx
+
+  ; Check if we've received a byte
+  lda ACIASTS
+  and #ACIA_RXF_BIT
+  beq .error
+
+  ; If so, store it in the current receive buffer index then update and store
+  ; the new buffer length
+  ldx BUFLEN
+  lda ACIADTA
+  sta RCVBUF,x
+  inx
+  stx BUFLEN
+
+  ; Check if we got a backspace (DEL). We need to handle this specially
+  cmp #DEL
+  bne .not_backspace
+
+  ; Clear out DEL character we just stored
+  dex
+  stz RCVBUF,x
+
+  ; If the above dex was not 0, that means we have a character to remove
+  ; from the buffer
+  beq .empty
+
+  ; Clear out the previous character in the local buffer and update BUFLEN
+  dex
+  stz RCVBUF,x
+  stx BUFLEN
+
+  ; Send a backspace character to the receiver, overwrite the previous
+  ; character on screen with a blank
+  lda #BS
+  sta ACIADTA
+  SND_DELAY
+  lda #' '
+  sta ACIADTA
+  SND_DELAY
+
+  lda #BS
+  jmp .normal_echo
+
+.empty:
+  ; Otherwise, the buffer was already empty, so just set the BUFLEN to 0
+  stx BUFLEN
+  jmp .done
+
+.not_backspace:
+  ; Linux/picocom sends us CR only, but expects CRLF so we need special
+  ; handling
+  cmp #CR
+  bne .not_cr
+
+  ; Echo the CR
+  sta ACIADTA
+  SND_DELAY
+
+  ; Then get ready to echo an LF.
+  lda #LF
+  jmp .normal_echo
+
+.not_cr:
+  ; Don't echo control codes other than CR, but echo printable characters
+  ; TODO: control codes probably should not be stored in the buffer, either
+  cmp #' '
+  bcc .done
+
+.normal_echo:
+  ; Either send another backspace character to move the cursor back after we overwrite
+  ; the previous character OR we're just echoing the character that was received.
+  sta ACIADTA
+  SND_DELAY
+
+.done:
+  plx
+  clc
+  rts
+
+.error:
+  plx
+  sec
   rts
 
 
