@@ -1,4 +1,4 @@
-; LCD functions for Ben Eater's 6502 computer kit
+; SD card routines
 
 ; SPDX-License-Identifier: GPL-3.0-or-later
 

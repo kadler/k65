@@ -1,3 +1,7 @@
+; Delay routines
+
+; SPDX-License-Identifier: GPL-3.0-or-later
+
   .ifndef DELAY_INC
 DELAY_INC = 1
 
