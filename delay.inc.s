@@ -28,4 +28,20 @@ delayms:
 
   rts
 
+delay:
+  phx
+  tax
+
+.loop:
+  lda #250
+  jsr delayms
+  jsr delayms
+  jsr delayms
+  jsr delayms
+
+  dex
+  bne .loop
+
+  plx
+  rts
   .endif
