@@ -1,6 +1,6 @@
 ; K65, Kevin's 6502 based OS/Monitor
 ;
-; Upon reset, it will initialize the LCD character display
+; Upon reset, it will initialize the LCD character display and ACIA
 ; Currently nmi and irq do nothing
 ;
 ; Routines include:
@@ -11,6 +11,11 @@
 ;  - lcd_clear
 ;  - lcd_home
 ;  - lcd_line_two
+;
+; # ACIA
+;  - acia_putc
+;  - acia_puts
+;  - acia_print_hex
 ;
 ; # Time-related
 ;  - delay
@@ -60,6 +65,14 @@ delay_syscall:
 delayms_syscall:
   jmp delayms
 
+acia_putc_syscall:
+  jmp acia_putc
+
+acia_puts_syscall:
+  jmp acia_puts
+
+acia_print_hex_syscall:
+  jmp acia_print_hex
 
 trampoline:
   jmp (R1)
@@ -76,14 +89,19 @@ reset:
   ldx #$ff
   txs
 
-  ; initialize the LCD
+  ; Initialize the LCD
   jsr lcd_init
+
+  ; Initialize the ACIA
+  jsr acia_init
 
   lda #<msg
   sta R1
   lda #>msg
   sta R1+1
+
   jsr puts
+  jsr acia_puts
 
 .loop:
   jmp .loop
@@ -93,6 +111,7 @@ msg:
   .asciiz "Welcome to K65!"
 
 
+  .include acia.inc.s
   .include delay.inc.s
   .include lcd.inc.s
   .include sdio.inc.s
