@@ -159,5 +159,6 @@ WELCOME:
   .include lcd.inc.s
   .include sdio.inc.s
   .include fat.inc.s
+  .include xmodem.inc.s
 
 ; vim: syntax=asm6502

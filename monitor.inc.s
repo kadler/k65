@@ -23,12 +23,24 @@ command_load:
   rts
 
 command_xload:
-  lda #<XLOAD
+  lda #LCD_HOME
+  jsr lcd_cmd
+  lda #<XLOAD_MSG
   sta R1
-  lda #>XLOAD
+  lda #>XLOAD_MSG
   sta R1+1
   jsr acia_puts
 
+  jsr acia_getc
+
+  jsr xmodem_rcv_prg
+  bcs .error
+
+  jsr trampoline
+  clc
+  rts
+
+.error:
   rts
 
 command_status:
@@ -320,10 +332,11 @@ COMMAND_NAME_LIST:
 STATUS_HEADER
   .asciiz " a  x  y sp n v d i z c"
 
+XLOAD_MSG
+  .asciiz "Start XMODEM transfer then press enter"
+
 LOAD
   .asciiz "LOAD"
-XLOAD
-  .asciiz "XLOAD"
 DUMP
   .asciiz "DUMP"
 WRITE
