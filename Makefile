@@ -31,8 +31,8 @@ include $(ROM_SOURCES:.s=.bin.d)
 include $(PRG_SOURCES:.s=.prg.d)
 
 syscalls.inc.s: k65.bin.lst
-	grep -E '(.*)_syscall EXPR' k65.bin.lst > $@.tmp
-	sed 's/\(.*\)_syscall.*=0x\([0-9A-Fa-f]*\).*/\1 = $$\2/' $@.tmp > $@
+	grep -E '(.*)_syscall EXPR' k65.bin.lst | sed 's/\(.*\)_syscall.*=0x\([0-9A-Fa-f]*\).*/\1 = $$\2/' > $@.tmp
+	diff $@ $@.tmp > /dev/null 2>&1 || cp $@.tmp $@
 	rm $@.tmp
 
 %.bin.d: %.s
