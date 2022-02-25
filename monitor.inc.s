@@ -32,11 +32,140 @@ command_xload:
   rts
 
 command_status:
-  lda #<STATUS
+  sta $f0
+  stx $f1
+  sty $f2
+  php
+  pla
+  sta $f3
+  tsx
+  stx $f4
+
+  lda #<STATUS_HEADER
   sta R1
-  lda #>STATUS
+  lda #>STATUS_HEADER
   sta R1+1
   jsr acia_puts
+
+  lda $f0
+  jsr acia_print_hex
+
+  lda #' '
+  jsr acia_putc
+
+  lda $f1
+  jsr acia_print_hex
+
+  lda #' '
+  jsr acia_putc
+
+  lda $f2
+  jsr acia_print_hex
+
+  lda #' '
+  jsr acia_putc
+
+  lda $f4
+  jsr acia_print_hex
+
+  lda #' '
+  jsr acia_putc
+
+  ;jsr acia_print_hex
+
+.n:
+  lda $f3
+  and #$80
+  beq .no_n
+  lda #'+'
+  jsr acia_putc
+  jmp .v
+
+.no_n:
+  lda #'-'
+  jsr acia_putc
+
+.v:
+  lda #' '
+  jsr acia_putc
+
+  lda $f3
+  and #$40
+  beq .no_v
+  lda #'+'
+  jsr acia_putc
+  jmp .d
+
+.no_v:
+  lda #'-'
+  jsr acia_putc
+
+.d:
+  lda #' '
+  jsr acia_putc
+
+  lda $f3
+  and #$08
+  beq .no_d
+  lda #'+'
+  jsr acia_putc
+  jmp .i
+
+.no_d:
+  lda #'-'
+  jsr acia_putc
+
+.i:
+  lda #' '
+  jsr acia_putc
+
+  lda $f3
+  and #$04
+  beq .no_i
+  lda #'+'
+  jsr acia_putc
+  jmp .z
+
+.no_i:
+  lda #'-'
+  jsr acia_putc
+
+.z:
+  lda #' '
+  jsr acia_putc
+
+  lda $f3
+  and #$02
+  beq .no_z
+  lda #'+'
+  jsr acia_putc
+  jmp .c
+
+.no_z:
+  lda #'-'
+  jsr acia_putc
+
+.c:
+  lda #' '
+  jsr acia_putc
+
+  lda $f3
+  and #$01
+  beq .no_c
+  lda #'+'
+  jsr acia_putc
+  jmp .end
+
+.no_c:
+  lda #'-'
+  jsr acia_putc
+
+.end:
+  lda #$0d
+  jsr acia_putc
+
+  lda #$0a
+  jsr acia_putc
 
   rts
 
@@ -188,12 +317,13 @@ COMMAND_NAME_LIST:
   .byte $0d
   .blk 3
 
+STATUS_HEADER
+  .asciiz " a  x  y sp n v d i z c"
+
 LOAD
   .asciiz "LOAD"
 XLOAD
   .asciiz "XLOAD"
-STATUS
-  .asciiz "STATUS"
 DUMP
   .asciiz "DUMP"
 WRITE
