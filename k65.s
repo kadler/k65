@@ -95,19 +95,58 @@ reset:
   ; Initialize the ACIA
   jsr acia_init
 
-  lda #<msg
+  lda #<WELCOME
   sta R1
-  lda #>msg
+  lda #>WELCOME
   sta R1+1
 
   jsr puts
   jsr acia_puts
 
-.loop:
-  jmp .loop
+
+mainloop:
+  jsr acia_check_data
+  bcs mainloop
+
+  ; if the user sent a LF, then a command is ready to be checked
+  ; NOTE: Default behavior for picocom/Linux is to convert LF -> CR (not CRLF),
+  ;       however we handle that and inject an LF locally.
+  cmp #LF
+  bne mainloop
+
+  ; Print diagnostic message
+  jsr lcd_home
+  lda #<COMMAND_CHECK
+  sta R1
+  lda #>COMMAND_CHECK
+  sta R1+1
+  jsr puts
+
+  ; see if we had a valid command
+  lda #<RCVBUF
+  sta R2
+  lda #>RCVBUF
+  sta R2+1
+  jsr find_command
+
+  ; If command was not found, so there's nothing to do but clear the buffer
+  ; TODO: Print error message
+  bcs .clear_command
+
+  ; Otherwise, call the found command routine
+  jsr trampoline
+
+.clear_command:
+  ; Regardless of whether we got a valid command or not, we need to clear the buffer
+  ; so we're ready to start decoding the next command.
+  jsr acia_clear_buffer
+
+  jmp mainloop
 
 
-msg:
+COMMAND_CHECK:
+  .asciiz "Checking command"
+WELCOME:
   .asciiz "Welcome to K65!"
 
 
