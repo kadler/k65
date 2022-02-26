@@ -14,12 +14,24 @@ MONITOR_INC = 1
 
 
 command_load:
-  lda #<LOAD
+  lda #<LOAD_MSG
   sta R1
-  lda #>LOAD
+  lda #>LOAD_MSG
   sta R1+1
   jsr acia_puts
+  jsr puts
 
+  jsr fat16_init
+  bcs .error
+
+  jsr fat16_load_prg
+  bcs .error
+
+  jsr trampoline
+  clc
+  rts
+
+.error:
   rts
 
 command_xload:
@@ -335,8 +347,9 @@ STATUS_HEADER
 XLOAD_MSG
   .asciiz "Start XMODEM transfer then press enter"
 
-LOAD
-  .asciiz "LOAD"
+LOAD_MSG
+  .asciiz "Loading program from SD"
+
 DUMP
   .asciiz "DUMP"
 WRITE
