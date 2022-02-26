@@ -162,7 +162,20 @@ ADDR_TEMP = $030a
 
 PTE1 = 446
 
-ERR_FAT_FOO = 3
+ERR_SRC_FAT = 2
+
+ERR_FAT_PART_OFF = $01
+ERR_FAT_PART_OFF2 = $02
+ERR_FAT_SECT_SIZE = $03
+ERR_FAT_CLST_SIZE = $04
+ERR_FAT_MBR = $05
+ERR_FAT_FS_HDR = $06
+ERR_FAT_READ_PRG = $07
+ERR_FAT_INV_SIGN = $08
+ERR_FAT_FAT_SIZE = $09
+ERR_FAT_LOD_ADDR= $0a
+ERR_FAT_CLST_NBR = $0b
+ERR_FAT_NOT_FOUND = $0c
 
 fat16_init:
   jsr sd_init
@@ -390,7 +403,7 @@ fat16_init:
   rts
 
 .error:
-  lda #1
+  lda #ERR_SRC_FAT
   sta ERR_SRC
 
   sec
@@ -398,47 +411,47 @@ fat16_init:
   rts
 
 .partition_offset_error:
-  lda #1
+  lda #ERR_FAT_PART_OFF
   sta ERR_COD
   jmp .error
 
 .partition_offset_error1:
-  lda #2
+  lda #ERR_FAT_PART_OFF2
   sta ERR_COD
   jmp .error
 
 .sector_size_error:
-  lda #3
+  lda #ERR_FAT_SECT_SIZE
   sta ERR_COD
   jmp .error
 
 .cluster_size_error:
-  lda #4
+  lda #ERR_FAT_CLST_SIZE
   sta ERR_COD
   jmp .error
 
 .read_mbr_error:
-  lda #5
+  lda #ERR_FAT_MBR
   sta ERR_COD
   jmp .error
 
 .read_fs_header_error:
-  lda #6
+  lda #ERR_FAT_FS_HDR
   sta ERR_COD
   jmp .error
 
 .read_prg_eror:
-  lda #7
+  lda #ERR_FAT_READ_PRG
   sta ERR_COD
   jmp .error
 
 .invalid_signature_error:
-  lda #9
+  lda #ERR_FAT_INV_SIGN
   sta ERR_COD
   jmp .error
 
 .fat_size_error:
-  lda #10
+  lda #ERR_FAT_PART_OFF
   sta ERR_COD
   jmp .error
 
@@ -714,23 +727,23 @@ fat16_load_prg:
   rts
 
 .error:
-  lda #1
+  lda #ERR_SRC_FAT
   sta ERR_SRC
   sec
   rts
 
 .read_ldaddr_error:
-  lda #6
+  lda #ERR_FAT_LOD_ADDR
   sta ERR_COD
   jmp .error
 
 .cluster_number_error:
-  lda #8
+  lda #ERR_FAT_CLST_NBR
   sta ERR_COD
   jmp .error
 
 .not_found_error:
-  lda #20
+  lda #ERR_FAT_NOT_FOUND
   sta ERR_COD
   jmp .error
 
