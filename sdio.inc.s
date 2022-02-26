@@ -54,7 +54,7 @@ hexdump:
   ; Move to line 2
   lda #$C0
   jsr lcd_cmd
-  
+
   ldy #4
 hex_loop:
   lda SD_DTA,y
@@ -70,31 +70,22 @@ hex_loop:
 
 
 sd_init:
-  ; TODO: Move this elsewhere?
-  lda #$f0
-  sta DDRA2
-  lda #$ff
-  sta DDRB2
+  jsr spi_set_slow
 
 ; Initialize the microcontroller in the sd card after power-on with, sending
 ; 1 bits while the card is not selected.
 ; The spec says *at least* 74 clocks must be sent, but Micropython and
 ; CircuitPython both use 80 clocks so we follow suit.
 init_micro:
-  ; Make sure we're not selecting the SD card
-  lda #SD_CSB
-  sta PB2
-
-  lda #SD_MOSI
-  sta PA2
+  ; Set CS high (ie. not selected)
+  lda PCR1
+  ora #VIA_PCR_CA2_HIGH
+  sta PCR1
 
   ldx #80
-.loop:
-  ora SD_SCLK
-  sta PA2
-  and #~SD_SCLK
-  sta PA2
-
+.loop
+  lda #$ff
+  jsr spi_write_byte
   dex
   bne .loop
 
@@ -154,6 +145,7 @@ init_micro:
   ; NOTE: We re-use the previous cmd buffer which is correct  _other_
   ; than the HCS bit. However, we're not going to support SDHC/SDXC
   ; so we DO NOT want it set _anyway_, so it all works out :D
+  ; ACMD41
   lda #($40 | 41)
   sta SD_CMD
 
@@ -167,6 +159,8 @@ init_micro:
   rts
 
 .init_done:
+  jsr spi_set_fast
+
   ; CMD58: Read the Operations Condition Register (OCR)
   ; pre-set the command and flag, we'll need to re-adjust the
   ; SD_ARG field every time through the loop, but these can
@@ -200,7 +194,7 @@ init_micro:
   lda #>512
   sta SD_ARG+2
   stz SD_ARG+3
-  
+
   stz SD_FLG
 
   jsr sd_cmd
@@ -300,7 +294,7 @@ sd_wait_ready:
 
   ldx #200
 sd_wait_ready_loop:
-  jsr sd_read_byte
+  jsr spi_read_byte
 
   cmp #$ff
   beq .ok
@@ -322,102 +316,41 @@ sd_wait_ready_loop:
   rts
 
 
-; func sd_read_byte
-;
-; Reads a byte in to accumulator
-sd_read_byte:
-  phx
-  phy
-
-  ldy #SD_MOSI
-  sty PA2
-
-  ; TODO: Initilize a with 1 then use branch until rol rotates
-  ; the 1 in to the carry flag. This gets rid of the need for the
-  ; x register and the dex
-  lda #1
-sd_readb_loop:
-  ldy #(SD_MOSI | SD_SCLK)
-  sty PA2
-
-  tay
-  lda PA2
-  ror
-  tya
-  rol
-
-  ; Toggle our clock
-  ldy #SD_MOSI
-  sty PA2
-
-  bcc sd_readb_loop
-
-  ply
-  plx
-  rts
-
-
-; func sd_write_byte
-sd_write_byte:
-  phx
-  phy
-
-  ldx #8
-sd_bit_loop:
-  tay
-
-  and #SD_MOSI
-  sta PA2
-  ora #SD_SCLK
-  sta PA2
-
-  and #~SD_SCLK
-  sta PA2
-
-  tya
-  rol
-
-  dex
-  bne sd_bit_loop
-
-  ply
-  plx
-  rts
-
-
 ; func sd_cmd
 sd_cmd:
   phx
   phy
 
   ; Bring the enable line low, ie. select it
-  ldx #0
-  stx PB2
+  lda PCR1
+  and #VIA_PCR_CA2_MASK
+  ora #VIA_PCR_CA2_LOW
+  sta PCR1
 
   ; TODO: only if needed
   jsr sd_wait_ready
 
   lda SD_CMD
-  jsr sd_write_byte
+  jsr spi_write_byte
 
   lda SD_ARG
-  jsr sd_write_byte
+  jsr spi_write_byte
 
   lda SD_ARG+1
-  jsr sd_write_byte
+  jsr spi_write_byte
 
   lda SD_ARG+2
-  jsr sd_write_byte
+  jsr spi_write_byte
 
   lda SD_ARG+3
-  jsr sd_write_byte
+  jsr spi_write_byte
 
   lda SD_CRC
-  jsr sd_write_byte
+  jsr spi_write_byte
 
   ldx #200
 .wait_status_ok:
-  jsr sd_read_byte
+  jsr spi_read_byte
   ora #0
 
   bpl .status_ok
@@ -438,16 +371,16 @@ sd_cmd:
   and #SD_FLG_RSP
   beq .check_data
 
-  jsr sd_read_byte
+  jsr spi_read_byte
   sta SD_ARG
 
-  jsr sd_read_byte
+  jsr spi_read_byte
   sta SD_ARG+1
 
-  jsr sd_read_byte
+  jsr spi_read_byte
   sta SD_ARG+2
 
-  jsr sd_read_byte
+  jsr spi_read_byte
   sta SD_ARG+3
 
   ; No commands have both R3/R7 _and_ data
@@ -460,7 +393,7 @@ sd_cmd:
 
   ; Wait for SD data token
 .wait_data_token:
-  jsr sd_read_byte
+  jsr spi_read_byte
   bpl .data_token_error
 
   cmp #$fe
@@ -528,7 +461,7 @@ sd_cmd:
   .endif
   .endif
 
-  jsr sd_read_byte
+  jsr spi_read_byte
   sta (R1),y
 
   .ifdef VERBOSE
@@ -597,7 +530,7 @@ sd_cmd:
   jsr lcd_putc
   .endif
 
-  jsr sd_read_byte
+  jsr spi_read_byte
   sta (R1),y
 
   .ifdef VERBOSE
@@ -627,17 +560,19 @@ sd_cmd:
 .read_done:
 
   ; Must read CRC, even though we don't check it
-  jsr sd_read_byte
-  jsr sd_read_byte
+  jsr spi_read_byte
+  jsr spi_read_byte
 
 .done:
   ; stop selecting this device
-  lda #SD_CSB
-  sta PB2
+  lda PCR1
+  and #VIA_PCR_CA2_MASK
+  ora #VIA_PCR_CA2_HIGH
+  sta PCR1
 
   ; Ensure SD card de-asserts the bus
   ;lda #$ff
-  ;jsr sd_write_byte
+  ;jsr spi_write_byte
 
   ; Load saved R1 response
   pla

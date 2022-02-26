@@ -32,6 +32,13 @@ command_load:
   rts
 
 .error:
+  lda ERR_SRC
+  jsr lcd_print_hex
+  lda #' '
+  jsr lcd_putc
+  lda ERR_COD
+  jsr lcd_print_hex
+  sec
   rts
 
 command_xload:
