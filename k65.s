@@ -94,6 +94,9 @@ reset:
   ; Initialize the ACIA
   jsr acia_init
 
+  ; Initialize the SPI bus
+  jsr spi_init
+
   ; Print a welcome message
   lda #<WELCOME
   sta R1
@@ -157,6 +160,7 @@ WELCOME:
   .include delay.inc.s
   .include lcd.inc.s
   .include sdio.inc.s
+  .include spi.inc.s
   .include fat.inc.s
   .include xmodem.inc.s
 
