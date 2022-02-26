@@ -30,18 +30,18 @@ syscalls.inc.s: k65.bin.lst
 	rm $@.tmp
 
 %.bin.d: %.s
-	vasm6502_oldstyle -quiet -c02 -Fbin -dotdir -opt-branch -DROM -depend=make -o $*.bin $< > $@
+	vasm6502_oldstyle -quiet -wdc02 -Fbin -dotdir -opt-branch -DROM -depend=make -o $*.bin $< > $@
 
 %.prg.d: %.s syscalls.inc.s
-	vasm6502_oldstyle -quiet -c02 -Fbin -dotdir -opt-branch -depend=make -o $*.prg $< > $@
+	vasm6502_oldstyle -quiet -wdc02 -Fbin -dotdir -opt-branch -depend=make -o $*.prg $< > $@
 
 %.bin %.bin.lst: %.s
-	vasm6502_oldstyle -c02 -Fbin -dotdir -opt-branch -DROM -L $*.bin.lst -o $*.bin $<
+	vasm6502_oldstyle -wdc02 -Fbin -dotdir -opt-branch -DROM -L $*.bin.lst -o $*.bin $<
 
 %.bin.lst: %.bin
 
 %.prg: %.s
-	vasm6502_oldstyle -c02 -Fbin -dotdir -opt-branch -cbm-prg -L $@.lst -o $@ $<
+	vasm6502_oldstyle -wdc02 -Fbin -dotdir -opt-branch -cbm-prg -L $@.lst -o $@ $<
 
 %.bin.burn: %.bin
 	minipro -p AT28C256 -w $<
