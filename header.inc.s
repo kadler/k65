@@ -16,6 +16,7 @@
 
   .org $8000
   .else
+  .include syscalls.inc.s
   .org $2000
   .endif
 

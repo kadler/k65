@@ -19,7 +19,7 @@ command_load:
   lda #>LOAD_MSG
   sta R1+1
   jsr acia_puts
-  jsr puts
+  jsr lcd_puts
 
   jsr fat16_init
   bcs .error

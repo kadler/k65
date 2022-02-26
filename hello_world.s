@@ -7,14 +7,8 @@
 
   .include header.inc.s
 
-  .ifdef ROM
-nmi:
-irq:
-  rti
-  .endif
-
-reset:
-  jsr lcd_init
+main:
+  jsr lcd_clear
 
   ; X is our string index
   lda #0
@@ -25,15 +19,13 @@ loop:
   lda hello, x
   beq done
   
-  jsr lcd_data
+  jsr lcd_putc
   
   inx
   jmp loop
 
 done:
   jmp done
-
-  .include lcd.inc.s
 
 hello
   .text "Hello, World!"

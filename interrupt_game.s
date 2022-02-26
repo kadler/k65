@@ -12,7 +12,7 @@ counter = $020a
   .include header.inc.s
 
 reset:
-  jsr lcd_init
+  jsr lcd_clear
 
   lda #0
   sta counter
@@ -95,11 +95,9 @@ char_loop:
 print:
   lda message,x
   beq display_counter
-  jsr lcd_data
+  jsr lcd_putc
   inx
   jmp print
-
-  .include lcd.inc.s
 
 nmi:
   rti

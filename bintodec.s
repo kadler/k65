@@ -9,14 +9,8 @@ message = $0204
 
   .include header.inc.s
 
-  .ifdef ROM
-nmi:
-irq:
-  rti
-  .endif
-
-reset:
-  jsr lcd_init
+main:
+  jsr lcd_clear
 
   ; Initialize message
   lda #0
@@ -88,7 +82,7 @@ char_loop:
 print:
   lda message,x
   beq done
-  jsr lcd_data
+  jsr lcd_putc
   inx
   jmp print
 
@@ -99,15 +93,7 @@ done:
   jsr delayms
   jsr delayms
 
-  .ifdef ROM
-.here:
-  jmp .here
-  .else
   rts
-  .endif
-
-  .include lcd.inc.s
-  .include delay.inc.s
 
 number: .word 3742
 

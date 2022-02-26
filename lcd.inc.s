@@ -46,7 +46,7 @@ LCD_DIR_LEFT    = %00000000
 HEX
   .text "0123456789ABCDEF"
 
-print_hex:
+lcd_print_hex:
   phx
   pha
 
@@ -56,20 +56,20 @@ print_hex:
   lsr
   tax
   lda HEX,x
-  jsr lcd_data
+  jsr lcd_putc
 
   pla
   pha
   and #$0f
   tax
   lda HEX,x
-  jsr lcd_data
+  jsr lcd_putc
 
   pla
   plx
   rts
 
-puts:
+lcd_puts:
   pha
   phy
 
@@ -79,7 +79,7 @@ puts:
   lda (R1),y
   beq .done
 
-  jsr lcd_data
+  jsr lcd_putc
   iny
   bne .loop
 
@@ -152,8 +152,7 @@ lcd_wait:
   pla
   rts
 
-lcd_data:
-putc:
+lcd_putc:
   pha
   jsr lcd_wait
 

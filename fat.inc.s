@@ -5,10 +5,6 @@
   .ifndef FAT_INC
 FAT_INC = 1
 
-  .include lcd.inc.s
-  .include delay.inc.s
-  .include sdio.inc.s
-
  ; Basic MBR and FAT16 implementation for 6502
  ; based off of information from
  ; - https://en.wikipedia.org/wiki/Master_boot_record
@@ -626,7 +622,7 @@ fat16_load_prg:
   sta R1
   lda #>found_prg
   sta R1+1
-  jsr puts
+  jsr lcd_puts
 
   lda #$C0
   jsr lcd_cmd
@@ -636,7 +632,7 @@ fat16_load_prg:
   lda #>PUTS_BUFFER
   sta R1+1
 
-  jsr puts
+  jsr lcd_puts
 
   lda #250
   jsr delayms
@@ -717,10 +713,10 @@ fat16_load_prg:
   ; Return the load address in R1
   lda SECTOR_DTA
   sta R1
-  jsr print_hex
+  jsr lcd_print_hex
   lda SECTOR_DTA+1
   sta R1+1
-  jsr print_hex
+  jsr lcd_print_hex
 
 .done:
   clc

@@ -37,15 +37,14 @@
 ; be removed so that compatibility is maintined with existing programs.
 ;
 
-; TODO: Rename puts and putc to lcd_puts and lcd_putc
-puts_syscall:
-  jmp puts
+lcd_puts_syscall:
+  jmp lcd_puts
 
-putc_syscall:
-  jmp putc
+lcd_putc_syscall:
+  jmp lcd_putc
 
-print_hex_syscall:
-  jmp print_hex
+lcd_print_hex_syscall:
+  jmp lcd_print_hex
 
 lcd_cmd_syscall:
   jmp lcd_cmd
@@ -101,7 +100,7 @@ reset:
   lda #>WELCOME
   sta R1+1
 
-  jsr puts
+  jsr lcd_puts
   jsr acia_puts
 
   ; Enter the main loop
@@ -123,7 +122,7 @@ mainloop:
   sta R1
   lda #>COMMAND_CHECK
   sta R1+1
-  jsr puts
+  jsr lcd_puts
 
   ; see if we had a valid command
   lda #<RCVBUF

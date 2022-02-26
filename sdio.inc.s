@@ -58,7 +58,7 @@ hexdump:
   ldy #4
 hex_loop:
   lda SD_DTA,y
-  jsr print_hex
+  jsr lcd_print_hex
 
   ; iny
   ; cpy #4
@@ -488,18 +488,18 @@ sd_cmd:
 
   .if 0
   lda R1+1
-  jsr print_hex
+  jsr lcd_print_hex
   lda R1
-  jsr print_hex
+  jsr lcd_print_hex
   .else
   lda SD_ARG
-  jsr print_hex
+  jsr lcd_print_hex
   lda SD_ARG+1
-  jsr print_hex
+  jsr lcd_print_hex
   lda SD_ARG+2
-  jsr print_hex
+  jsr lcd_print_hex
   lda SD_ARG+3
-  jsr print_hex
+  jsr lcd_print_hex
 
   clc
   lda SD_ARG+3
@@ -517,14 +517,14 @@ sd_cmd:
   .endif
 
   lda #" "
-  jsr lcd_data
+  jsr lcd_putc
 
   .if 0
   tya
-  jsr print_hex
+  jsr lcd_print_hex
 
   lda #" "
-  jsr lcd_data
+  jsr lcd_putc
   .endif
   .endif
 
@@ -532,14 +532,14 @@ sd_cmd:
   sta (R1),y
 
   .ifdef VERBOSE
-  jsr putc
+  jsr lcd_putc
 
   pha
   lda #' '
-  jsr putc
+  jsr lcd_putc
   pla
 
-  jsr print_hex
+  jsr lcd_print_hex
 
   lda #200
   jsr delayms
@@ -571,13 +571,13 @@ sd_cmd:
   jsr lcd_cmd
 
   lda SD_ARG
-  jsr print_hex
+  jsr lcd_print_hex
   lda SD_ARG+1
-  jsr print_hex
+  jsr lcd_print_hex
   lda SD_ARG+2
-  jsr print_hex
+  jsr lcd_print_hex
   lda SD_ARG+3
-  jsr print_hex
+  jsr lcd_print_hex
 
   clc
   lda SD_ARG+3
@@ -594,21 +594,21 @@ sd_cmd:
   sta SD_ARG
 
   lda #" "
-  jsr lcd_data
+  jsr lcd_putc
   .endif
 
   jsr sd_read_byte
   sta (R1),y
 
   .ifdef VERBOSE
-  jsr putc
+  jsr lcd_putc
 
   pha
   lda #' '
-  jsr putc
+  jsr lcd_putc
   pla
 
-  jsr print_hex
+  jsr lcd_print_hex
 
   lda #100
   jsr delayms

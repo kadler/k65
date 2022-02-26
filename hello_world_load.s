@@ -4,13 +4,7 @@
 ;
 ; SPDX-License-Identifier: GPL-3.0-or-later
 
-  .include registers.inc.s
-
-puts = $8000
-lcd_cmd = $8003
-delayms = $8006
-
-  .org $5000
+  .include header.inc.s
 
 main:
   pha
@@ -23,7 +17,7 @@ main:
   sta R1
   lda #>hello
   sta R1+1
-  jsr puts
+  jsr lcd_puts
 
   pla
   rts

@@ -12,7 +12,7 @@ irq:
   rti
 
 reset:
-  jsr lcd_init
+  jsr lcd_clear
 
   ; X is our character register
   lda #65 ; start at 'A'
@@ -42,7 +42,7 @@ line_adjusted:
 display_character:
   ; display the character
   txa
-  jsr lcd_data
+  jsr lcd_putc
 
   lda #125
   jsr delayms
@@ -81,11 +81,5 @@ move_line_one:
   jmp line_adjusted
 
   jmp reset
-
-  ; include delay routines
-  .include delay.inc.s
-
-  ; include LCD routines
-  .include lcd.inc.s
 
 ; vim: syntax=asm6502

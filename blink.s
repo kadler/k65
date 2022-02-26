@@ -4,11 +4,7 @@
 
   .include header.inc.s
 
-nmi:
-irq:
-  rti
-
-reset:
+main:
   ; set all pins in port A as outputs
   lda #$ff
   sta DDRA1
@@ -29,9 +25,5 @@ loop:
   jsr delayms
 
   jmp loop
-
-  .include delay.inc.s
-
-
 
 ; vim: syntax=asm6502

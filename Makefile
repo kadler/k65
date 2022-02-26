@@ -1,4 +1,4 @@
-SOURCES= \
+PRG_SOURCES= \
     blink.s \
     blink_all.s \
     blink_and_count.s \
@@ -8,16 +8,14 @@ SOURCES= \
     hello_world.s \
     bintodec.s \
     interrupt_game.s \
-    echo.s
-
-PRG_SOURCES= \
+    echo.s \
     hello_world_load.s
 
 ROM_SOURCES= \
     k65.s
 
-ROMS=$(SOURCES:.s=.bin) $(ROM_SOURCES:.s=.bin)
-PRGS=$(SOURCES:.s=.prg) $(PRG_SOURCES:.s=.prg)
+ROMS=$(ROM_SOURCES:.s=.bin)
+PRGS=$(PRG_SOURCES:.s=.prg)
 
 all: $(ROMS) $(PRGS)
 

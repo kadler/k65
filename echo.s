@@ -8,14 +8,8 @@
 
   .include header.inc.s
 
-  .ifdef ROM
-nmi:
-irq:
-  rti
-  .endif
-
-reset:
-  jsr lcd_init
+main:
+  jsr lcd_clear
 
   lda #%00010000 ; 1 stop bit, 8 data bits, external clock, 16x external clock (115200)
   sta ACIACTL
@@ -27,7 +21,7 @@ reset:
   sta R1
   lda #>hello
   sta R1+1
-  jsr puts
+  jsr lcd_puts
 
 
 send:
@@ -68,16 +62,9 @@ wait_rxd_full:
   ; Clear buffer
   lda ACIADTA
 
-  .ifdef ROM
-  jmp send
-  .else
   cmp #'u'
   bne send
   rts
-  .endif
-
-  .include lcd.inc.s
-  .include delay.inc.s
 
 hello
   .asciiz "Hello, Serial Port!"
