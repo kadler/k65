@@ -8,11 +8,7 @@ SOURCES= \
     hello_world.s \
     bintodec.s \
     interrupt_game.s \
-    echo.s \
-    sdio_hello.s \
-    sdio_prg.s \
-    fat_test.s \
-    xmodem.s
+    echo.s
 
 PRG_SOURCES= \
     hello_world_load.s
