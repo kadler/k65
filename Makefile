@@ -32,7 +32,7 @@ syscalls.inc.s: k65.bin.lst
 %.bin.d: %.s
 	vasm6502_oldstyle -quiet -c02 -Fbin -dotdir -opt-branch -DROM -depend=make -o $*.bin $< > $@
 
-%.prg.d: %.s
+%.prg.d: %.s syscalls.inc.s
 	vasm6502_oldstyle -quiet -c02 -Fbin -dotdir -opt-branch -depend=make -o $*.prg $< > $@
 
 %.bin %.bin.lst: %.s
