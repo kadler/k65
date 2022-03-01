@@ -191,7 +191,7 @@ fat16_init:
 
   stz R2
   stz R2+1
-  
+
   jsr sd_read_sector
   bcs .read_mbr_error
 
@@ -259,7 +259,7 @@ fat16_init:
   lda SECTOR_DTA + PTE1 + 9
   sta R2+1
   pha
-  
+
   lda #<SECTOR_DTA
   sta R1
   lda #>SECTOR_DTA
@@ -474,23 +474,34 @@ fat16_init:
 ;   to a file size limitation of < 512 bytes
 ;
 fat16_load_prg:
+  ; Save off R4 & R5 so we can use them
+  PHR R4
+  PHR R5
+
+  lda R1
+  sta R4
+  lda R1+1
+  sta R4+1
+
   ; Read first 16 directory entries
   lda #<SECTOR_DTA
   sta R1
+  sta R5
   lda #>SECTOR_DTA
   sta R1+1
+  sta R5+1
 
   lda DIR_ADDRESS
   sta R2
   lda DIR_ADDRESS+1
   sta R2+1
-  
+
   jsr sd_read_sector
   bcs .not_found_error
 
+
   ; X is the entry number, Y is the entry offset
   ldx #16
-  ldy #0
 .dir_loop:
   ; --- FAT Directory Entry ---
   ;
@@ -521,14 +532,16 @@ fat16_load_prg:
   ;   which we're going to skip - don't want to deal with UCS-2
 
   ; If file name starts with NUL, it's the last entry
-  lda SECTOR_DTA,y
+  ldy #0
+  lda (R5),y
   beq .not_found_error
   cmp #$2e
   beq .dir_loop_next
   cmp #$e5
   beq .dir_loop_next
 
-  lda SECTOR_DTA+11,y
+  ldy #11
+  lda (R5),y
   cmp #$0f
   beq .dir_loop_next
 
@@ -544,61 +557,73 @@ fat16_load_prg:
   ; we also need to reserve pages for global and system data.
   ;
   ; Thus, we ensure that the size is less than 29k
-  lda SECTOR_DTA+31,y
+  ldy #31
+  lda (R5),y
   bne .dir_loop_next
-  lda SECTOR_DTA+30,y
+  dey
+  lda (R5),y
   bne .dir_loop_next
-  lda SECTOR_DTA+29,y
+  dey
+  lda (R5),y
   cmp #$74
   ; < 29k is OK
   bmi .file_size_ok
   ; > 29k is BAD
   bne .dir_loop_next
   ; = 29k, check low byte is 0
-  lda SECTOR_DTA+28,y
+  dey
+  lda (R5),y
   bne .dir_loop_next
 
 
 .file_size_ok:
-  phx
-  phy
-
-  ; Need to loop over each byte of the file name and extension
-  ; This would require adding 2 offsets to our SECTOR_DTA absolute
-  ; address: offset to current entry and offset to current character
-  ; The 6502 does not have such addressing modes, however, so we
-  ; need to use indirect addressing by calculating the address
-  ; to the directory entry, then using an offset from there.
-  ; We could have done this for the rest of the loop too, but
-  ; indirect addressing is slower so we only use it when necessary.
-  ;
-  ; R1 = SECTOR_DTA + y
-  clc
-  tya
-  adc #<SECTOR_DTA
+  ; Compare filename to the one passed in and if it doesn't match, continue to
+  ; the next one.
+  lda R5
   sta R1
-  lda #0
-  adc #>SECTOR_DTA
+  lda R5+1
   sta R1+1
 
+  lda R4
+  sta R2
+  lda R4+1
+  sta R2+1
+  jsr fat16_filename_compare
+
+  ; We've found our program, so break out of the loop
+  bcc .found
+
+.dir_loop_next:
+  dex
+  beq .not_found_error
+
+  clc
+  lda R5
+  adc #32
+  sta R5
+  lda R5+1
+  adc #0
+  sta R5+1
+
+  jmp .dir_loop
+
+
+.found:
+  ; Convert the filename in to display format
   lda #<PUTS_BUFFER
   sta R2
   lda #>PUTS_BUFFER
   sta R2+1
-
   jsr fat16_unpad_filename
-
-  ply
-  plx
 
   ; Print a loading message with the file name.
   ; Since the filename string could be up to 12 characters
   ; we put the filename on the second line
   jsr lcd_clear
 
-  lda #<found_prg
+  lda #<FAT16_LOADING_MSG
   sta R1
-  lda #>found_prg
+  lda #>FAT16_LOADING_MSG
   sta R1+1
   jsr lcd_puts
 
@@ -608,36 +633,20 @@ fat16_load_prg:
   sta R1
   lda #>PUTS_BUFFER
   sta R1+1
-
   jsr lcd_puts
 
-  lda #250
-  jsr delayms
-  jsr delayms
-  jsr delayms
-  jsr delayms
-
-  ; We've found our program, so break out of the loop
-  jmp .dir_loop_done
-.dir_loop_next:
-  tya
-  clc
-  adc #32
-  tay
-
-  dex
-  beq .not_found_error
-
-  jmp .dir_loop
-.dir_loop_done:
+  lda #1
+  jsr delay
 
   ; Subtract 2 from starting file cluster, since the first two
   ; clusters contain the FAT id and the end of chain marker
   sec
-  lda SECTOR_DTA+26,y
+  ldy #26
+  lda (R5),y
   sbc #2
   sta ADDR_TEMP
-  lda SECTOR_DTA+27,y
+  iny
+  lda (R5),y
   sbc #0
   sta ADDR_TEMP+1
   ; Starting cluster was invalid? (ie. < 2)
@@ -653,27 +662,30 @@ fat16_load_prg:
   adc DTA_ADDRESS+1
   sta ADDR_TEMP+1
 
-  ; Read the first sector of data
+  ; Read the first sector of data in SECTOR_DTA
   lda #<SECTOR_DTA
   sta R1
   lda #>SECTOR_DTA
   sta R1+1
 
+  ; From our calculated SD sector address
   lda ADDR_TEMP
   sta R2
   lda ADDR_TEMP+1
   sta R2+1
-  
+
   jsr sd_read_sector
   bcs .read_ldaddr_error
 
   ; Copy the program data to the load address stored in the
   ; first two bytes of the file
+  ; Source address is the start of the program (after load address)
   lda #<(SECTOR_DTA+2)
   sta R1
   lda #>(SECTOR_DTA+2)
   sta R1+1
 
+  ; Destination address is load address
   lda SECTOR_DTA
   sta R2
   lda SECTOR_DTA+1
@@ -690,16 +702,18 @@ fat16_load_prg:
   ; Return the load address in R1
   lda SECTOR_DTA
   sta R1
-  jsr lcd_print_hex
   lda SECTOR_DTA+1
   sta R1+1
-  jsr lcd_print_hex
 
 .done:
+  PLR R5
+  PLR R4
   clc
   rts
 
 .error:
+  PLR R5
+  PLR R4
   lda #ERR_SRC_FAT
   sta ERR_SRC
   sec
@@ -968,7 +982,7 @@ fat16_filename_compare:
   bne .false
 
   iny
-  cpy #12
+  cpy #11
   bne .loop
 
   ply
@@ -1043,7 +1057,7 @@ memcpy8_upd:
   pla
   rts
 
-found_prg:
+FAT16_LOADING_MSG
   .asciiz 'Loading'
 
   .endif
