@@ -957,6 +957,32 @@ fat16_unpad_filename:
   rts
 
 
+fat16_filename_compare:
+  pha
+  phy
+
+  ldy #0
+.loop:
+  lda (R1),y
+  cmp (R2),y
+  bne .false
+
+  iny
+  cpy #12
+  bne .loop
+
+  ply
+  pla
+  clc
+  rts
+
+.false:
+  ply
+  pla
+  sec
+  rts
+
+
 ; Copy up to 256 bytes from R1 in to R2
 ; Afterward, R1 & R2 will be incremented based on the
 ; size passed in.
