@@ -581,39 +581,12 @@ fat16_load_prg:
   adc #>SECTOR_DTA
   sta R1+1
 
-  ; Copy the unpadded part of the file name
-  ldy #0
-  ldx #0
-.name_loop:
-  lda (R1),y
-  cmp #' '
-  beq .name_done
-  sta PUTS_BUFFER,x
-  inx
-  iny
-  cpy #8
-  bne .name_loop
+  lda #<PUTS_BUFFER
+  sta R2
+  lda #>PUTS_BUFFER
+  sta R2+1
 
-.name_done:
-  lda #'.'
-  sta PUTS_BUFFER,x
-  inx
-
-  ; Copy the unpadded part of the file extension
-  ldy #8
-.ext_loop:
-  lda (R1),y
-  cmp #' '
-  beq .ext_done
-  sta PUTS_BUFFER,x
-  inx
-  iny
-  cpy #11
-  bne .ext_loop
-
-.ext_done:
-  lda #0
-  sta PUTS_BUFFER,x
+  jsr fat16_unpad_filename
 
   ply
   plx
@@ -746,6 +719,242 @@ fat16_load_prg:
   lda #ERR_FAT_NOT_FOUND
   sta ERR_COD
   jmp .error
+
+
+
+; func fat16_pad_filename
+;
+; Converts 8.3 format name FILENAME.EXT to FAT 11-byte padded name format FILENAMEEXT.
+;
+; inputs:
+;  - #R1 - input string
+;  - #R2 - output string
+fat16_pad_filename:
+  pha
+  phy
+
+  ; Copy the unpadded part of the file name, up to 8 characters
+  ldy #0
+.name_loop:
+  lda (R1),y
+  cmp #'.'
+  beq .name_pad
+
+  cmp #'a'
+  bmi .name_store
+
+  cmp #'{'
+  bpl .name_store
+
+  ; Lower case a-z found, convert to upper case
+  and #~$20
+
+.name_store:
+  sta (R2),y
+  iny
+  cpy #8
+  bne .name_loop
+  jmp .name_done
+
+.name_pad:
+  ; save off y
+  phy
+
+.pad_loop:
+  lda #' '
+  sta (R2),y
+  iny
+  cpy #8
+  bne .pad_loop
+
+  ply
+
+.name_done
+  ; Make sure we found the dot
+  lda (R1),y
+  cmp #'.'
+  bne .error
+
+  ; Skip over dot
+  iny
+
+  ; Increment R1 and R2 registers for the extension
+  ;
+  ; For the destination string, it's always at R1+8, while the source string
+  ; depends on how many characters were in the unpadded name, plus the period.
+  ; This allows us to use the same loop counter for both source and dest,
+  ; below. We can't use x, since x-indirect addressing works differently.
+  clc
+  lda R2
+  adc #8
+  sta R2
+  lda R2+1
+  adc #0
+  sta R2+1
+
+  ; Save off the destination offset, so we can restore R2 before returning
+  tya
+  pha
+  clc
+  adc R1
+  sta R1
+  lda R1+1
+  adc #0
+  sta R1+1
+
+  ; Copy the unpadded part of the file extension, up to 3 characters
+  ldy #0
+.ext_loop:
+  lda (R1),y
+  cmp #0
+  beq .ext_pad
+
+  cmp #'a'
+  bmi .ext_store
+
+  cmp #'{'
+  bpl .ext_store
+
+  ; Lower case a-z found, convert to upper case
+  and #~$20
+
+.ext_store:
+  sta (R2),y
+  iny
+  cpy #3
+  bne .ext_loop
+  jmp .ext_done
+
+.ext_pad:
+  lda #' '
+  sta (R2),y
+  iny
+  cpy #3
+  bne .ext_pad
+
+.ext_done:
+  ; Restore the original R2 value by subtracting the fixed offset
+  sec
+  lda R2
+  sbc #8
+  sta R2
+  lda R2+1
+  sbc #0
+  sta R2+1
+
+  ; Restore the original R1 value by subtracting the saved offset
+  pla
+  sec
+  sbc R1
+  sta R1
+  lda R1+1
+  sbc #0
+  sta R1+1
+
+  ply
+  pla
+  clc
+  rts
+
+.error:
+  ; TODO: Check y is 8 and set an error code?
+  ply
+  pla
+  sec
+  rts
+
+
+; func fat16_unpad_filename
+;
+; Converts FAT 11-byte padded name format FILENAMEEXT to 8.3 format
+; FILENAME.EXT.
+;
+; inputs:
+;  - #R1 - input string
+;  - #R2 - output string
+fat16_unpad_filename:
+  pha
+  phy
+
+  ; Copy the unpadded part of the file name, up to 8 characters
+  ldy #0
+.name_loop:
+  lda (R1),y
+  cmp #' '
+  beq .name_done
+
+  sta (R2),y
+  iny
+  cpy #8
+  bne .name_loop
+
+.name_done:
+  lda #'.'
+  sta (R2),y
+  iny
+
+
+  ; Increment R1 and R2 registers for the extension
+  ;
+  ; For the source string, it's always at R1+8, while the destination string
+  ; depends on how many characters were in the unpadded name, plus the period.
+  ; This allows us to use the same loop counter for both source and dest,
+  ; below. We can't use x, since x-indirect addressing works differently.
+  clc
+  lda R1
+  adc #8
+  sta R1
+  lda R1+1
+  adc #0
+  sta R1+1
+
+  ; Save off the destination offset, so we can restore R2 before returning
+  tya
+  pha
+  clc
+  adc R2
+  sta R2
+  lda R2+1
+  adc #0
+  sta R2+1
+
+  ; Copy the unpadded part of the file extension, up to 3 characters
+  ldy #0
+.ext_loop:
+  lda (R1),y
+  cmp #' '
+  beq .ext_done
+
+  sta (R2),y
+  iny
+  cpy #3
+  bne .ext_loop
+
+.ext_done:
+  lda #0
+  sta (R2),y
+
+  ; Restore the original R1 value by subtracting the fixed offset
+  sec
+  lda R1
+  sbc #8
+  sta R1
+  lda R1+1
+  sbc #0
+  sta R1+1
+
+  ; Restore the original R2 value by subtracting the saved offset
+  pla
+  sec
+  sbc R2
+  sta R2
+  lda R2+1
+  sbc #0
+  sta R2+1
+
+  ply
+  pla
+  rts
 
 
 ; Copy up to 256 bytes from R1 in to R2
