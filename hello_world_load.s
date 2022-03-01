@@ -10,8 +10,7 @@ main:
   pha
 
   ; clear the screen just in case
-  lda #$01
-  jsr lcd_cmd
+  jsr lcd_clear
 
   lda #<hello
   sta R1

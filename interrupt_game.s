@@ -20,8 +20,7 @@ reset:
 
 display_counter:
   ; move cursor home
-  lda #$02
-  jsr lcd_cmd
+  jsr lcd_home
 
   ; Initialize message
   lda #0

@@ -615,8 +615,7 @@ fat16_load_prg:
   ; Print a loading message with the file name.
   ; Since the filename string could be up to 12 characters
   ; we put the filename on the second line
-  lda #$01
-  jsr lcd_cmd
+  jsr lcd_clear
 
   lda #<found_prg
   sta R1
@@ -624,8 +623,7 @@ fat16_load_prg:
   sta R1+1
   jsr lcd_puts
 
-  lda #$C0
-  jsr lcd_cmd
+  jsr lcd_line_two
 
   lda #<PUTS_BUFFER
   sta R1

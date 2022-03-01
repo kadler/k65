@@ -42,8 +42,6 @@ command_load:
   rts
 
 command_xload:
-  lda #LCD_HOME
-  jsr lcd_cmd
   lda #<XLOAD_MSG
   sta R1
   lda #>XLOAD_MSG

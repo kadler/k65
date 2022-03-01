@@ -52,8 +52,7 @@ ERR_SD_DTA_TKN = 6
 hexdump:
 
   ; Move to line 2
-  lda #$C0
-  jsr lcd_cmd
+  jsr lcd_line_two
 
   ldy #4
 hex_loop:
@@ -416,8 +415,7 @@ sd_cmd:
 .read_remainder_byte:
 
   .ifdef VERBOSE
-  lda #$01
-  jsr lcd_cmd
+  jsr lcd clear
 
   .if 0
   lda R1+1
@@ -500,8 +498,7 @@ sd_cmd:
 .read_byte:
 
   .ifdef VERBOSE
-  lda #$01
-  jsr lcd_cmd
+  jsr lcd_clear
 
   lda SD_ARG
   jsr lcd_print_hex
