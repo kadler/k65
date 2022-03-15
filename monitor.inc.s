@@ -12,17 +12,51 @@
   .ifndef MONITOR_INC
 MONITOR_INC = 1
 
+XLOAD_FILENAME = $0701 ; to $070b
 
 command_load:
-  lda #<LOAD_MSG
-  sta R1
-  lda #>LOAD_MSG
-  sta R1+1
+  ; Parse the command string passed in to look for the end of the
+  ; current token, ie. filename
+  ldy #0
+.loop
+  lda (R2),y
+  beq .done
+
+  cmp #' '
+  beq .done
+  cmp #CR
+  beq .done
+
+  iny
+  jmp .loop
+
+.done:
+  ; We "found" a token. If it's empty, nothing to do
+  cpy #0
+  beq .error
+
+  ; We found a space or newline. In that case, insert a null-terminator
+  ; so that we can pad it properly
+  lda #0
+  sta (R2),y
+
+  ; Set up registers to call fat16_pad_filename
+  MVR R1, R2
+  LDRI R2, XLOAD_FILENAME
+  jsr fat16_pad_filename
+  bcs .error
+
+  ; Print out a load message
+  LDRI R1, LOAD_MSG
   jsr acia_puts
   jsr lcd_puts
 
+  ; Try to initialize the FAT16 filesystem on the SD card
   jsr fat16_init
   bcs .error
+
+  ; Re-load our padded filename to call fat16_load_prg
+  LDRI R1, XLOAD_FILENAME
 
   jsr fat16_load_prg
   bcs .error
@@ -40,6 +74,7 @@ command_load:
   jsr lcd_print_hex
   sec
   rts
+
 
 command_xload:
   lda #<XLOAD_MSG
