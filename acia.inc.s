@@ -108,8 +108,8 @@ LF = $0a
 CR = $0d
 DEL = $7f
 
-RCVBUF = $0400
-BUFLEN = $0500
+RCVBUF = $0600
+BUFLEN = $0700
 
   ; TODO: figure out how to do this better
   ;
