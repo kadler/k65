@@ -263,21 +263,32 @@ find_command:
   phx
   phy
 
-  ldx #COMMAND_TABLE_COUNT
-  ldy #0
+  ldx #0
 
   lda #<COMMAND_NAME_LIST
   sta R1
   lda #>COMMAND_NAME_LIST
   sta R1+1
-.loop:
-  jsr strcmp
-  bcc .done
+.commands_loop:
 
-  dex
-  beq .error
+  ldy #0
+.loop
+  ; If we found a null terminator, we've found a potential match
+  lda (R1),y
+  beq .matches
+
+  ; If the other string doesn't match, go to the next command
+  cmp (R2),y
+  bne .next_command
 
   iny
+  jmp .loop
+
+
+.next_command:
+  inx
+  cpx #COMMAND_TABLE_COUNT
+  beq .error
 
   clc
   lda R1
@@ -286,12 +297,37 @@ find_command:
   lda R1+1
   adc #0
   sta R1+1
-  jmp .loop
+  jmp .commands_loop
 
-.done:
-  lda COMMAND_ADDRESS_LOW_LIST,y
+.matches:
+  ; We got a potential match on the command. Now check that
+  ; there is a following space or newline. eg.
+  ; "xload\r"       matches "xload" OK
+  ; "xloadfoo\r"    matches "xload" ERR
+  ; "load foo\r"    matches "load" OK
+  lda (R2),y
+  cmp #' '
+  beq .found
+  cmp #CR
+  beq .found
+
+  jmp .error
+
+.found:
+  ; Bump the command string past the command for any further
+  ; command string processing to be done by the command itself
+  clc
+  iny
+  tya
+  adc R2
+  sta R2
+  lda #0
+  adc R2+1
+  sta R2+1
+
+  lda COMMAND_ADDRESS_LOW_LIST,x
   sta R1
-  lda COMMAND_ADDRESS_HIGH_LIST,y
+  lda COMMAND_ADDRESS_HIGH_LIST,x
   sta R1+1
 
   plx
@@ -327,24 +363,19 @@ COMMAND_NAME_LIST:
   ; each entry is 10 bytes
 
   .text "load"
-  .byte $0d
-  .blk 3
+  .blk 4
 
   .text "xload"
-  .byte $0d
-  .blk 2
+  .blk 3
 
   .text "status"
-  .byte $0d
-  .blk 1
-
-  .text "write"
-  .byte $0d
   .blk 2
 
-  .text "dump"
-  .byte $0d
+  .text "write"
   .blk 3
+
+  .text "dump"
+  .blk 4
 
 STATUS_HEADER
   .asciiz " a  x  y sp n v d i z c"
