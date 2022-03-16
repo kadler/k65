@@ -2,10 +2,14 @@
   .ifndef REGISTERS_INC
 REGISTERS_INC = 1
 
+; Callee-saved 16-bit "registers"
 R1 = $02
 R2 = $04
 R3 = $06
+; Caller-saved 16-bit "registers"
 R4 = $08
+R5 = $0a
+R6 = $0c
 
 ERR_SRC = $ff
 ERR_COD = $fe
