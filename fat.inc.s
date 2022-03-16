@@ -184,10 +184,7 @@ fat16_init:
   bcs .error_2
 
   ; Read in the Master Boot Record (MBR) in sector 0
-  lda #<SECTOR_DTA
-  sta R1
-  lda #>SECTOR_DTA
-  sta R1+1
+  LDRI R1, SECTOR_DTA
 
   stz R2
   stz R2+1
@@ -260,10 +257,7 @@ fat16_init:
   sta R2+1
   pha
 
-  lda #<SECTOR_DTA
-  sta R1
-  lda #>SECTOR_DTA
-  sta R1+1
+  LDRI R1, SECTOR_DTA
 
   jsr sd_read_sector
 
@@ -478,10 +472,7 @@ fat16_load_prg:
   PHR R4
   PHR R5
 
-  lda R1
-  sta R4
-  lda R1+1
-  sta R4+1
+  MVR R4, R1
 
   ; Read first 16 directory entries
   lda #<SECTOR_DTA
@@ -491,10 +482,7 @@ fat16_load_prg:
   sta R1+1
   sta R5+1
 
-  lda DIR_ADDRESS
-  sta R2
-  lda DIR_ADDRESS+1
-  sta R2+1
+  LDR R2, DIR_ADDRESS
 
   jsr sd_read_sector
   bcs .not_found_error
@@ -579,15 +567,9 @@ fat16_load_prg:
 .file_size_ok:
   ; Compare filename to the one passed in and if it doesn't match, continue to
   ; the next one.
-  lda R5
-  sta R1
-  lda R5+1
-  sta R1+1
+  MVR R1, R5
+  MVR R2, R4
 
-  lda R4
-  sta R2
-  lda R4+1
-  sta R2+1
   jsr fat16_filename_compare
 
   ; We've found our program, so break out of the loop
@@ -610,10 +592,7 @@ fat16_load_prg:
 
 .found:
   ; Convert the filename in to display format
-  lda #<PUTS_BUFFER
-  sta R2
-  lda #>PUTS_BUFFER
-  sta R2+1
+  LDRI R2, PUTS_BUFFER
   jsr fat16_unpad_filename
 
   ; Print a loading message with the file name.
@@ -621,18 +600,12 @@ fat16_load_prg:
   ; we put the filename on the second line
   jsr lcd_clear
 
-  lda #<FAT16_LOADING_MSG
-  sta R1
-  lda #>FAT16_LOADING_MSG
-  sta R1+1
+  LDRI R1, FAT16_LOADING_MSG
   jsr lcd_puts
 
   jsr lcd_line_two
 
-  lda #<PUTS_BUFFER
-  sta R1
-  lda #>PUTS_BUFFER
-  sta R1+1
+  LDRI R1, PUTS_BUFFER
   jsr lcd_puts
 
   lda #1
@@ -663,16 +636,10 @@ fat16_load_prg:
   sta ADDR_TEMP+1
 
   ; Read the first sector of data in SECTOR_DTA
-  lda #<SECTOR_DTA
-  sta R1
-  lda #>SECTOR_DTA
-  sta R1+1
+  LDRI R1, SECTOR_DTA
 
   ; From our calculated SD sector address
-  lda ADDR_TEMP
-  sta R2
-  lda ADDR_TEMP+1
-  sta R2+1
+  LDR R2, ADDR_TEMP
 
   jsr sd_read_sector
   bcs .read_ldaddr_error
@@ -680,16 +647,10 @@ fat16_load_prg:
   ; Copy the program data to the load address stored in the
   ; first two bytes of the file
   ; Source address is the start of the program (after load address)
-  lda #<(SECTOR_DTA+2)
-  sta R1
-  lda #>(SECTOR_DTA+2)
-  sta R1+1
+  LDRI R1, (SECTOR_DTA+2)
 
   ; Destination address is load address
-  lda SECTOR_DTA
-  sta R2
-  lda SECTOR_DTA+1
-  sta R2+1
+  LDR R2, SECTOR_DTA
 
   ; copy first 256 bytes
   lda #0 ; 256
@@ -700,10 +661,7 @@ fat16_load_prg:
   jsr memcpy8_upd
 
   ; Return the load address in R1
-  lda SECTOR_DTA
-  sta R1
-  lda SECTOR_DTA+1
-  sta R1+1
+  LDR R1, SECTOR_DTA
 
 .done:
   PLR R5
