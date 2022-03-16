@@ -7,6 +7,7 @@
 ; origin to $2000
 
   .include registers.inc.s
+  .include macros.inc.s
 
   .ifdef ROM
   .org $fffa
