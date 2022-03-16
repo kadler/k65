@@ -89,6 +89,26 @@ lcd_puts:
   rts
 
 
+lcd_puts_len:
+  phx
+  phy
+
+  tax
+  ldy #0
+.loop:
+  lda (R1),y
+  jsr lcd_putc
+
+  iny
+  dex
+  bne .loop
+
+.done:
+  ply
+  plx
+  rts
+
+
 lcd_init:
   ; set all pins in port B as outputs
   ; set all pins in port A as outputs
